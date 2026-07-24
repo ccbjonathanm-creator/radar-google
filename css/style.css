@@ -39,6 +39,11 @@ label.champ input{
   background:#0e1626;color:var(--txt);outline:none;
 }
 label.champ input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #38e1ff22}
+label.champ select{
+  width:100%;padding:13px 14px;font-size:15px;border-radius:12px;border:1px solid var(--line);
+  background:#0e1626;color:var(--txt);outline:none;appearance:none;-webkit-appearance:none;
+}
+label.champ select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #38e1ff22}
 label.champ .sous{color:var(--dim);font-size:12.5px;margin-top:6px;line-height:1.45}
 label.champ a{color:var(--cyan)}
 .btn-primaire{
@@ -47,6 +52,16 @@ label.champ a{color:var(--cyan)}
 }
 .btn-primaire:active{filter:brightness(.92)}
 .btn-primaire:disabled{opacity:.5;cursor:not-allowed}
+.btn-secondaire{
+  background:#1b2942;color:var(--txt);border:1px solid var(--line);border-radius:12px;
+  padding:14px 20px;font-size:15px;font-weight:700;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+}
+.btn-secondaire:hover{border-color:var(--cyan)}
+.btn-secondaire .mini{font-size:11px;font-weight:600;color:var(--cyan);background:#0e1c2c;
+  border:1px solid #2a4a6a;border-radius:20px;padding:2px 8px}
+.ou-sep{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:13px;margin:16px 0;text-transform:uppercase;letter-spacing:1px}
+.ou-sep:before,.ou-sep:after{content:"";flex:1;height:1px;background:var(--line)}
 .note-cle{background:#0d1c17;border-left:3px solid var(--green);padding:12px 14px;border-radius:8px;
   font-size:13px;color:#d7ffef;line-height:1.5;margin-top:4px}
 .msg-test{font-size:13.5px;margin-top:12px;min-height:18px}
@@ -145,10 +160,11 @@ mark{background:#38e1ff44;color:inherit;border-radius:3px}
   font-size:14px;color:#d7ffef;margin:0 0 12px}
 .rlic-field{display:block;margin-bottom:14px}
 .rlic-field .lab{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--txt)}
-.rlic-field input,.rlic-field textarea{width:100%;padding:12px 13px;font-size:15px;border-radius:11px;
+.rlic-field input,.rlic-field textarea,.rlic-field select{width:100%;padding:12px 13px;font-size:15px;border-radius:11px;
   border:1px solid var(--line);background:#0e1626;color:var(--txt);outline:none;resize:vertical;
   font-family:inherit}
-.rlic-field input:focus,.rlic-field textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #38e1ff22}
+.rlic-field select{appearance:none;-webkit-appearance:none}
+.rlic-field input:focus,.rlic-field textarea:focus,.rlic-field select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #38e1ff22}
 .rlic-status{font-size:13px;color:var(--amber);min-height:18px;margin-bottom:8px}
 .rlic-row{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
 .rlic-btn{padding:12px 18px;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;border:1px solid var(--line)}

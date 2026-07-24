@@ -13,7 +13,7 @@ const PUB = { kty: "EC", crv: "P-256",
   y: "ypDSAMbv2P3_gf1C8YkBygW4i6pb5wMINBElVTooT9I" };
 
 const LKEY = "radar.lic";        // stocke a part : survit a un reset des reglages
-export const PRIX = "29 €"; // <-- PRIX AFFICHE AU CLIENT. A ajuster librement.
+export const PRIX = "10 €"; // <-- PRIX AFFICHE AU CLIENT. A ajuster librement.
 // L'essai gratuit (1 liste) est compte cote SERVEUR par e-mail (voir trial.js),
 // pas ici : reinstaller ne le remet donc pas a zero. licence.js ne gere que la
 // licence PAYANTE (verification de la signature).
@@ -36,13 +36,21 @@ function b64urlToBuf(s) {
   return buf;
 }
 
-async function verify(keyB64, email) {
+// Verifie une signature ECDSA P-256 (cle PUBLIQUE integree) d'un SUJET quelconque.
+// Reutilise par les modules payants (ex. "recherche:<email>") pour rester sur la
+// meme paire de cles que la licence de l'appli. Exporte pour js/modules.js.
+export async function verifSubject(subject, keyB64) {
   try {
     const pub = await crypto.subtle.importKey("jwk", PUB, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
     const sig = b64urlToBuf((keyB64 || "").trim());
-    const data = new TextEncoder().encode(normEmail(email));
+    const data = new TextEncoder().encode(String(subject || ""));
     return await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, pub, sig, data);
   } catch (e) { return false; }
+}
+
+// Licence de l'appli : le sujet signe est simplement l'e-mail normalise.
+function verify(keyB64, email) {
+  return verifSubject(normEmail(email), keyB64);
 }
 
 async function activate(email, keyStr) {

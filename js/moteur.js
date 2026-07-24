@@ -31,6 +31,29 @@ export async function placesRecherche(requete, cle) {
   return data.places || [];
 }
 
+// Recherche paginee (module Recherche de prospects) : renvoie une page de lieux
+// + le jeton de page suivant. Le field mask inclut nextPageToken (top-level).
+export async function placesRecherchePage(requete, cle, pageToken) {
+  const champs = "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber," +
+    "places.websiteUri,places.rating,places.userRatingCount,places.primaryTypeDisplayName," +
+    "places.googleMapsUri,nextPageToken";
+  const body = { textQuery: requete, languageCode: "fr", regionCode: "FR", pageSize: 20 };
+  if (pageToken) body.pageToken = pageToken;
+  const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Goog-Api-Key": cle, "X-Goog-FieldMask": champs },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const e = new Error("HTTP " + r.status);
+    e.code = r.status;
+    e.corps = await r.text().catch(() => "");
+    throw e;
+  }
+  const data = await r.json();
+  return { places: data.places || [], nextPageToken: data.nextPageToken || "" };
+}
+
 export async function placesAvis(placeId, cle) {
   const url = `https://places.googleapis.com/v1/places/${placeId}?languageCode=fr&regionCode=FR`;
   const r = await fetch(url, { method: "GET", headers: { "X-Goog-Api-Key": cle, "X-Goog-FieldMask": "reviews" } });
@@ -263,6 +286,68 @@ export async function enrichir(prospect, cles, opts) {
     if (ia && ia.accroche) fiche.accroche = ia.accroche;
   }
   return fiche;
+}
+
+// ---------------------------------------------------------------------------
+// Module Recherche de prospects : construire des fiches par filtres Google
+// ---------------------------------------------------------------------------
+
+// Un lieu Google renvoye par la recherche EST deja une fiche enrichie : on le
+// convertit directement au meme format que enrichir(), pret pour le tableau de bord.
+export function placeVersFiche(place, ville) {
+  const nom = (place.displayName && place.displayName.text) || "";
+  const tel = place.nationalPhoneNumber || "";
+  const fiche = {
+    entite: nom, personne: "", societe: nom,
+    tel, tel_norm: normaliserTel(tel),
+    ville: ville || "", email: "", profil: "",
+    trouve: true, confiance: "confirme",
+    note: place.rating != null ? place.rating : "",
+    avis: place.userRatingCount != null ? place.userRatingCount : 0,
+    site: place.websiteUri || "",
+    google_url: place.googleMapsUri || "",
+    adresse: place.formattedAddress || "",
+    type: (place.primaryTypeDisplayName && place.primaryTypeDisplayName.text) || "",
+    avis_negatifs: [], position: null, position_req: "", position_faite: false,
+    angle: "", accroche: "",
+  };
+  fiche.angle = angleRegles(fiche);
+  fiche.accroche = accrocheRegles(fiche);
+  return fiche;
+}
+
+// Recherche de prospects par filtres. filtres = { metier, ville, sansSite, noteMax, max }.
+// onProgress(nbTrouves) est appele apres chaque page. Renvoie un tableau de fiches.
+export async function rechercherProspects(filtres, cle, onProgress) {
+  const metier = (filtres.metier || "").trim();
+  const ville = (filtres.ville || "").trim();
+  const requete = `${metier} ${ville}`.trim();
+  if (!requete) throw new Error("Indique au moins un metier ou une ville.");
+  const cible = Math.min(Math.max(parseInt(filtres.max, 10) || 20, 1), 60);
+  const noteMax = filtres.noteMax != null && filtres.noteMax !== "" ? parseFloat(filtres.noteMax) : null;
+
+  const fiches = [];
+  const vus = new Set();
+  let token = "";
+  for (let page = 0; page < 3; page++) {           // Google : 3 pages max (~60 lieux)
+    const { places, nextPageToken } = await placesRecherchePage(requete, cle, token);
+    for (const p of places) {
+      if (!p.id || vus.has(p.id)) continue;
+      vus.add(p.id);
+      if (filtres.sansSite && p.websiteUri) continue;
+      if (noteMax != null) {
+        // on garde les notes faibles ET les sans-note (presence faible = bonne cible)
+        if (p.rating != null && p.rating > noteMax) continue;
+      }
+      fiches.push(placeVersFiche(p, ville));
+      if (fiches.length >= cible) break;
+    }
+    if (onProgress) onProgress(fiches.length);
+    if (fiches.length >= cible || !nextPageToken) break;
+    token = nextPageToken;
+    await new Promise((r) => setTimeout(r, 350)); // le jeton de page a besoin d'un court delai
+  }
+  return trierParPriorite(fiches);
 }
 
 // Tri : les plus "vendables" en haut.

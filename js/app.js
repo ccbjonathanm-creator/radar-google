@@ -3,10 +3,11 @@
  * Navigation entre Reglages / Import / Tableau de bord, enrichissement avec progression.
  */
 import { parseCSV, lireProspects } from "./csv.js";
-import { enrichir, trierParPriorite, fichesVersCSV, placesRecherche } from "./moteur.js";
+import { enrichir, trierParPriorite, fichesVersCSV, placesRecherche, rechercherProspects } from "./moteur.js";
 import { Licence } from "./licence.js";
 import { Vendeur } from "./vendeur.js";
-import { Trial } from "./trial.js";
+import { Trial, TrialRecherche } from "./trial.js";
+import { Recherche } from "./modules.js";
 
 const LS_GOOGLE = "radar_cle_google";
 const LS_GROQ = "radar_cle_groq";
@@ -15,12 +16,14 @@ const $ = (id) => document.getElementById(id);
 const vues = {
   reglages: $("vue-reglages"),
   import: $("vue-import"),
+  recherche: $("vue-recherche"),
   dashboard: $("vue-dashboard"),
 };
 
 let prospectsCharges = null;   // { prospects, mapping, entetes }
 let fiches = null;             // resultats enrichis
 let enCours = false;
+let rechercheEnCours = false;
 
 // ---------------------------------------------------------------------------
 // Cles
@@ -221,6 +224,131 @@ $("btn-nouvelle").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Module Recherche de prospects (option payante independante)
+// ---------------------------------------------------------------------------
+$("btn-recherche").addEventListener("click", ouvrirRecherche);
+$("btn-vers-recherche").addEventListener("click", ouvrirRecherche);
+$("btn-rechercher").addEventListener("click", lancerRecherche);
+
+function ouvrirRecherche() {
+  if (!aUneCleGoogle()) {          // la recherche a besoin de la cle Google
+    $("btn-annuler-reglages").hidden = false;
+    montrer("reglages");
+    return;
+  }
+  majBadgeModule();
+  montrer("recherche");
+}
+
+function afficherLimiteR(texte, type) {
+  const z = $("r-limite");
+  z.textContent = texte;
+  z.classList.remove("hidden");
+  z.style.background = type === "info" ? "#0e1626" : "#3a2a10";
+  z.style.color = type === "info" ? "#8aa0c0" : "#ffc24b";
+  z.style.borderColor = type === "info" ? "#22304a" : "#7a5a1f";
+}
+
+// Garde d'acces a une recherche : module debloque, sinon 1 recherche d'essai (serveur).
+async function autoriserRecherche() {
+  if (Recherche.isUnlocked()) return true;
+  if (!TrialRecherche.hasEmail()) {
+    await showStartGate();          // collecte l'e-mail partage
+    if (Recherche.isUnlocked()) return true;
+    if (!TrialRecherche.hasEmail()) return false;
+  }
+  await TrialRecherche.status();
+  majBadgeModule();
+  if (TrialRecherche.usesLeft === 0) { Recherche.openSheet(true); return false; }
+  return true; // > 0, ou null (hors-ligne) = fail-open
+}
+
+async function lancerRecherche() {
+  if (rechercheEnCours) return;
+  const cles = lireCles();
+  if (!cles.google) { montrer("reglages"); return; }
+  const metier = $("r-metier").value.trim();
+  const ville = $("r-ville").value.trim();
+  if (!metier && !ville) { afficherLimiteR("Indique au moins un metier et une ville.", "warn"); return; }
+  $("r-limite").classList.add("hidden");
+
+  const autorise = await autoriserRecherche();
+  if (!autorise) return;
+
+  const filtres = {
+    metier, ville,
+    sansSite: $("r-sans-site").checked,
+    noteMax: $("r-note-max").value,
+    max: $("r-max").value,
+  };
+  rechercheEnCours = true;
+  $("btn-rechercher").disabled = true;
+  $("r-progress").classList.remove("hidden");
+  const txt = $("r-prog-txt");
+  const barre = $("r-prog-barre");
+  txt.textContent = "Interrogation de Google Maps...";
+  barre.style.width = "15%";
+
+  let resultats;
+  try {
+    resultats = await rechercherProspects(filtres, cles.google, (n) => {
+      txt.textContent = `${n} prospect(s) trouve(s)...`;
+      barre.style.width = Math.min(90, 15 + n * 3) + "%";
+    });
+  } catch (e) {
+    rechercheEnCours = false;
+    $("btn-rechercher").disabled = false;
+    $("r-progress").classList.add("hidden");
+    barre.style.width = "0%";
+    const msg = e.code
+      ? (e.code === 403 ? "Cle Google refusee (403). Verifie \"Places API (New)\" dans Reglages."
+        : "Erreur API Google " + e.code + ".")
+      : (e.message || String(e));
+    afficherLimiteR("Echec de la recherche : " + msg, "warn");
+    return;
+  }
+
+  barre.style.width = "100%";
+  rechercheEnCours = false;
+  $("btn-rechercher").disabled = false;
+  $("r-progress").classList.add("hidden");
+  barre.style.width = "0%";
+
+  if (!resultats.length) {
+    afficherLimiteR("Aucun prospect trouve pour ces criteres. Elargis la zone ou retire des filtres.", "warn");
+    return;
+  }
+  // La recherche a produit des resultats : on consomme l'essai (si pas de licence module).
+  if (!Recherche.isUnlocked()) await TrialRecherche.consume();
+  majBadgeModule();
+
+  // Les resultats sont deja des fiches enrichies -> directement dans le tableau de bord.
+  fiches = resultats;
+  prospectsCharges = null;
+  bilanConsole(fiches);
+  rendreDashboard();
+  montrer("dashboard");
+}
+
+// Badge d'etat du module (essai / licence) sur l'ecran de recherche.
+function majBadgeModule() {
+  const b = $("mod-badge");
+  if (!b) return;
+  if (Recherche.isUnlocked()) {
+    b.innerHTML = `&#10003; <b>Module Recherche</b> — debloque a vie (${escTexte(Recherche.unlockedEmail() || "")}).`;
+    return;
+  }
+  const left = TrialRecherche.usesLeft; // null = inconnu (hors-ligne)
+  const dispo = left === 0
+    ? `Essai termine. Recherche illimitee avec le module a vie (${escTexte(Recherche.PRIX)}).`
+    : `Version d'essai : <b>1 recherche gratuite</b>.`;
+  b.innerHTML = `${dispo} <span class="lien" id="lien-module">J'ai une cle, l'activer</span>`;
+  const l = $("lien-module");
+  if (l) l.addEventListener("click", () => Recherche.openActivate());
+}
+window.addEventListener("radar-module-change", majBadgeModule);
+
+// ---------------------------------------------------------------------------
 // Tableau de bord (rendu identique au script Python)
 // ---------------------------------------------------------------------------
 const q = $("q");
@@ -392,7 +520,7 @@ function showStartGate() {
         <button class="rlic-btn ghost" id="sg-licence">J'ai deja une cle</button>
         <button class="rlic-btn primary" id="sg-ok">Continuer</button>
       </div>
-      <div class="rlic-version" id="rlic-version">Radar Google v1</div>
+      <div class="rlic-version" id="rlic-version">Radar Google v2</div>
     </div>`;
     document.body.appendChild(back);
     // acces vendeur depuis la version de cet ecran aussi
@@ -416,8 +544,9 @@ function showStartGate() {
 }
 
 window.addEventListener("radar-licence-change", majBadgeLicence);
-// acces au mode vendeur depuis la ligne de version en bas de l'ecran Import
+// acces au mode vendeur depuis la ligne de version (ecran Import + ecran Recherche)
 Vendeur.bindLongPress($("rlic-version-footer"));
+Vendeur.bindLongPress($("rlic-version-recherche"));
 
 // ---------------------------------------------------------------------------
 // Service worker + demarrage
@@ -428,6 +557,7 @@ if ("serviceWorker" in navigator) {
 (async () => {
   Trial.load();
   await Licence.init();
+  await Recherche.init();
   // e-mail demande au demarrage (comme Resolv), sauf si deja licencie ou deja saisi
   if (!Licence.isLicensed() && !Trial.hasEmail()) await showStartGate();
   if (!Licence.isLicensed() && Trial.hasEmail()) await Trial.status();

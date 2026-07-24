@@ -43,12 +43,15 @@ async function unlockPriv(pass) {
   return new TextDecoder().decode(pt); // throw si mauvaise passphrase
 }
 
-// signe l'e-mail normalise (doit correspondre EXACTEMENT a licence.js : trim + minuscules)
-export async function signerEmail(jwkStr, email) {
+// signe le SUJET (doit correspondre EXACTEMENT au verificateur : trim + minuscules).
+//  - produit "appli"     -> sujet = e-mail seul           (licence.js)
+//  - produit "recherche" -> sujet = "recherche:" + e-mail (modules.js)
+export async function signerEmail(jwkStr, email, scope) {
   const jwk = JSON.parse(jwkStr);
   const key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const em = (email || "").trim().toLowerCase();
-  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(em));
+  const sujet = scope === "recherche" ? "recherche:" + em : em;
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(sujet));
   return b64url(new Uint8Array(sig));
 }
 
@@ -108,7 +111,12 @@ function viewUnlock(body, close) {
 function viewGenerate(body, close) {
   body.innerHTML = `
     <h3>&#128273; Generer une licence</h3>
-    <p class="rlic-hint">Entre l'e-mail que le client t'a communique a l'achat. La cle sera liee a cet e-mail (valable sur tous ses appareils).</p>
+    <p class="rlic-hint">Choisis le produit achete, puis entre l'e-mail que le client t'a communique. La cle sera liee a cet e-mail (valable sur tous ses appareils).</p>
+    <label class="rlic-field"><span class="lab">Produit</span>
+      <select id="v-produit">
+        <option value="appli">Appli Radar Google (analyse de listes) — 10 €</option>
+        <option value="recherche">Module Recherche de prospects — 10 €</option>
+      </select></label>
     <label class="rlic-field"><span class="lab">E-mail du client</span>
       <input type="email" id="v-email" placeholder="ex. client@mail.com" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
     <div class="rlic-row"><button class="rlic-btn primary" id="v-gen">Generer la cle</button></div>
@@ -117,12 +125,15 @@ function viewGenerate(body, close) {
   body.querySelector("[data-close]").addEventListener("click", close);
   body.querySelector("#v-gen").addEventListener("click", async () => {
     const email = body.querySelector("#v-email").value.trim();
+    const produit = body.querySelector("#v-produit").value;
+    const scope = produit === "recherche" ? "recherche" : "";
+    const nomProduit = produit === "recherche" ? "Module Recherche" : "Appli Radar Google";
     const out = body.querySelector("#v-out");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { out.style.display = "block"; out.textContent = "Entre un e-mail valide."; return; }
     try {
-      const licence = await signerEmail(privInMemory, email);
+      const licence = await signerEmail(privInMemory, email, scope);
       out.style.display = "block";
-      out.innerHTML = `<div class="rlic-hint" style="margin-bottom:6px">Cle pour <b>${esc(email.toLowerCase())}</b> (copiee) — envoie e-mail + cle au client :</div>
+      out.innerHTML = `<div class="rlic-hint" style="margin-bottom:6px"><b>${esc(nomProduit)}</b> — cle pour <b>${esc(email.toLowerCase())}</b> (copiee) — envoie e-mail + cle au client :</div>
         <div class="rlic-key">${esc(licence)}</div>`;
       if (navigator.clipboard) navigator.clipboard.writeText(licence);
       toast("Cle generee et copiee");

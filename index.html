@@ -17,6 +17,7 @@
   <div class="head-row">
     <h1>&#128225; RADAR GOOGLE</h1>
     <button class="head-btn ghost" id="btn-nouvelle" hidden>&#128193; Nouvelle liste</button>
+    <button class="head-btn" id="btn-recherche">&#128269; Rechercher</button>
     <button class="head-btn" id="btn-reglages">&#9881;&#65039; Reglages</button>
   </div>
 </header>
@@ -74,13 +75,75 @@
 
   <button class="btn-primaire" id="btn-analyser" disabled style="width:100%">Analyser la liste</button>
 
+  <div class="ou-sep">ou</div>
+  <button class="btn-secondaire" id="btn-vers-recherche" style="width:100%">&#128269; Rechercher des prospects sans fichier
+    <span class="mini">module en option</span></button>
+
   <div id="zone-progress" class="hidden" style="margin-top:16px">
     <div class="barre"><i id="prog-barre"></i></div>
     <div class="prog-txt" id="prog-txt"></div>
   </div>
 
   <div class="lic-badge" id="lic-badge"></div>
-  <div class="rlic-version" id="rlic-version-footer">Radar Google v1</div>
+  <div class="rlic-version" id="rlic-version-footer">Radar Google v2</div>
+</main>
+
+<!-- ============ ECRAN RECHERCHE DE PROSPECTS (module) ============ -->
+<main id="vue-recherche" class="hidden">
+  <div class="panneau">
+    <h2>&#128269; Rechercher des prospects</h2>
+    <p class="aide">Trouve directement des professionnels sur Google Maps par metier et par zone,
+      sans importer de fichier. Ensuite : exporte-les en CSV (Excel) ou analyse-les tout de suite dans l'appli.</p>
+
+    <label class="champ">
+      <span class="lab">Metier / activite <span style="color:var(--red)">*</span></span>
+      <input id="r-metier" type="text" autocomplete="off" placeholder="ex. plombier, electricien, coiffeur, garagiste...">
+    </label>
+
+    <label class="champ">
+      <span class="lab">Ville / zone <span style="color:var(--red)">*</span></span>
+      <input id="r-ville" type="text" autocomplete="off" placeholder="ex. Chalon-sur-Saone, Macon, Le Creusot...">
+    </label>
+
+    <div class="options">
+      <label class="opt-row"><input type="checkbox" id="r-sans-site">
+        <span class="txt"><span class="ot">Seulement les pros sans site web</span>
+        <span class="od">Les meilleures cibles pour vendre un site : une fiche Google mais aucun site derriere.</span></span></label>
+    </div>
+
+    <label class="champ">
+      <span class="lab">Note maximale <span class="opt">(optionnel)</span></span>
+      <select id="r-note-max">
+        <option value="">Toutes les notes</option>
+        <option value="4.5">4,5 &#9733; et moins</option>
+        <option value="4">4,0 &#9733; et moins</option>
+        <option value="3.5">3,5 &#9733; et moins</option>
+        <option value="3">3,0 &#9733; et moins</option>
+      </select>
+      <span class="sous">Cible les fiches a note faible (e-reputation a ameliorer). Laisse "Toutes" pour ne pas filtrer.</span>
+    </label>
+
+    <label class="champ">
+      <span class="lab">Nombre de prospects</span>
+      <select id="r-max">
+        <option value="20">20 prospects</option>
+        <option value="40">40 prospects</option>
+        <option value="60">60 prospects (max)</option>
+      </select>
+    </label>
+
+    <div id="r-limite" class="avert hidden"></div>
+
+    <button class="btn-primaire" id="btn-rechercher" style="width:100%">Rechercher les prospects</button>
+
+    <div id="r-progress" class="hidden" style="margin-top:16px">
+      <div class="barre"><i id="r-prog-barre"></i></div>
+      <div class="prog-txt" id="r-prog-txt"></div>
+    </div>
+
+    <div class="lic-badge" id="mod-badge"></div>
+    <div class="rlic-version" id="rlic-version-recherche">Radar Google v2</div>
+  </div>
 </main>
 
 <!-- ============ ECRAN TABLEAU DE BORD ============ -->
