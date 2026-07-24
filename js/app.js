@@ -4,6 +4,8 @@
  */
 import { parseCSV, lireProspects } from "./csv.js";
 import { enrichir, trierParPriorite, fichesVersCSV, placesRecherche } from "./moteur.js";
+import { Licence } from "./licence.js";
+import { Vendeur } from "./vendeur.js";
 
 const LS_GOOGLE = "radar_cle_google";
 const LS_GROQ = "radar_cle_groq";
@@ -153,6 +155,8 @@ async function lancerAnalyse() {
   if (enCours || !prospectsCharges) return;
   const cles = lireCles();
   if (!cles.google) { router(); return; }
+  // Garde licence : 1 liste gratuite, puis mur payant.
+  if (!Licence.guard()) return;
   const opts = {
     avis: $("opt-avis").checked,
     position: $("opt-position").checked,
@@ -182,6 +186,8 @@ async function lancerAnalyse() {
   fiches = trierParPriorite(out);
   enCours = false;
   txt.textContent = "Termine.";
+  Licence.consommerListe(); // 1 liste gratuite consommee (sans effet si deja licencie)
+  majBadgeLicence();
   bilanConsole(fiches);
   rendreDashboard();
   montrer("dashboard");
@@ -335,9 +341,33 @@ function exporterCSV() {
 }
 
 // ---------------------------------------------------------------------------
+// Licence : badge d'etat + acces vendeur
+// ---------------------------------------------------------------------------
+function majBadgeLicence() {
+  const b = $("lic-badge");
+  if (!b) return;
+  if (Licence.isLicensed()) {
+    b.innerHTML = `&#10003; <b>Version complete</b> — debloquee a vie (${escTexte(Licence.licensedEmail() || "")}).`;
+  } else {
+    const reste = Licence.listesGratuitesRestantes();
+    const dispo = reste > 0
+      ? `Version d'essai : <b>1 liste gratuite</b> disponible.`
+      : `Essai termine. Analyse illimitee avec la licence a vie (${escTexte(Licence.PRIX)}).`;
+    b.innerHTML = `${dispo} <span class="lien" id="lien-licence">J'ai une cle, l'activer</span>`;
+    const l = $("lien-licence");
+    if (l) l.addEventListener("click", () => Licence.openActivate());
+  }
+}
+function escTexte(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+
+window.addEventListener("radar-licence-change", majBadgeLicence);
+// acces au mode vendeur depuis la ligne de version en bas de l'ecran Import
+Vendeur.bindLongPress($("rlic-version-footer"));
+
+// ---------------------------------------------------------------------------
 // Service worker + demarrage
 // ---------------------------------------------------------------------------
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
-router();
+Licence.init().then(() => { majBadgeLicence(); router(); });

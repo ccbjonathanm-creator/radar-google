@@ -124,3 +124,41 @@ a.btn{display:inline-block;padding:10px 14px;border-radius:10px;text-decoration:
 .vide{text-align:center;color:var(--dim);padding:60px 20px}
 mark{background:#38e1ff44;color:inherit;border-radius:3px}
 .barre-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+
+/* ---- Licence : badge, modal, toast ---- */
+.lic-badge{font-size:12.5px;color:var(--dim);margin:14px 2px 0;text-align:center}
+.lic-badge b{color:var(--green)}
+.lic-badge .lien{color:var(--cyan);cursor:pointer;text-decoration:underline}
+.rlic-back{position:fixed;inset:0;background:rgba(4,10,20,.72);z-index:2147482000;display:flex;
+  align-items:flex-end;justify-content:center;padding:0;animation:rlic-fade .2s ease}
+@media(min-width:560px){.rlic-back{align-items:center;padding:20px}}
+@keyframes rlic-fade{from{opacity:0}to{opacity:1}}
+.rlic-sheet{background:var(--card);border:1px solid var(--line);width:100%;max-width:480px;
+  border-radius:18px 18px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));
+  box-shadow:0 -12px 40px rgba(0,0,0,.5)}
+@media(min-width:560px){.rlic-sheet{border-radius:18px}}
+.rlic-sheet h3{margin:0 0 12px;font-size:18px;color:var(--txt)}
+.rlic-hint{color:var(--dim);font-size:13.5px;line-height:1.5;margin:0 0 12px}
+.rlic-info{background:#0e1c2c;border:1px solid #2a4a6a;border-left:3px solid var(--cyan);
+  border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.5;color:#dbeeff;margin:0 0 12px}
+.rlic-ok{background:#0d1c17;border:1px solid #1f6b3f;border-radius:10px;padding:12px 14px;
+  font-size:14px;color:#d7ffef;margin:0 0 12px}
+.rlic-field{display:block;margin-bottom:14px}
+.rlic-field .lab{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--txt)}
+.rlic-field input,.rlic-field textarea{width:100%;padding:12px 13px;font-size:15px;border-radius:11px;
+  border:1px solid var(--line);background:#0e1626;color:var(--txt);outline:none;resize:vertical;
+  font-family:inherit}
+.rlic-field input:focus,.rlic-field textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #38e1ff22}
+.rlic-status{font-size:13px;color:var(--amber);min-height:18px;margin-bottom:8px}
+.rlic-row{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.rlic-btn{padding:12px 18px;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;border:1px solid var(--line)}
+.rlic-btn.primary{background:var(--cyan);color:#04121a;border:0}
+.rlic-btn.ghost{background:transparent;color:var(--txt)}
+.rlic-btn.primary:active{filter:brightness(.92)}
+.rlic-version{margin-top:16px;text-align:center;font-size:12px;color:#4a5a72}
+.rlic-out{margin-top:12px;background:#0e1626;border:1px solid var(--line);border-radius:10px;padding:12px}
+.rlic-key{word-break:break-all;font-family:ui-monospace,monospace;font-size:13px;color:var(--green)}
+#rlic-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);
+  background:#12351f;color:#d7ffef;border:1px solid #1f6b3f;border-radius:12px;padding:12px 18px;
+  font-size:14px;font-weight:600;z-index:2147483600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:90vw;text-align:center}
+#rlic-toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
