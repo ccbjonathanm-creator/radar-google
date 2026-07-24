@@ -1,4 +1,4 @@
-const CACHE = "radar-v3";
+const CACHE = "radar-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -10,6 +10,7 @@ const ASSETS = [
   "./js/csv.js",
   "./js/licence.js",
   "./js/vendeur.js",
+  "./js/trial.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-512.png",

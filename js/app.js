@@ -6,6 +6,7 @@ import { parseCSV, lireProspects } from "./csv.js";
 import { enrichir, trierParPriorite, fichesVersCSV, placesRecherche } from "./moteur.js";
 import { Licence } from "./licence.js";
 import { Vendeur } from "./vendeur.js";
+import { Trial } from "./trial.js";
 
 const LS_GOOGLE = "radar_cle_google";
 const LS_GROQ = "radar_cle_groq";
@@ -155,8 +156,9 @@ async function lancerAnalyse() {
   if (enCours || !prospectsCharges) return;
   const cles = lireCles();
   if (!cles.google) { router(); return; }
-  // Garde licence : 1 liste gratuite, puis mur payant.
-  if (!Licence.guard()) return;
+  // Garde d'acces : licence payante, sinon 1 liste d'essai comptee cote serveur.
+  const autorise = await autoriserAnalyse();
+  if (!autorise) return;
   const opts = {
     avis: $("opt-avis").checked,
     position: $("opt-position").checked,
@@ -186,7 +188,7 @@ async function lancerAnalyse() {
   fiches = trierParPriorite(out);
   enCours = false;
   txt.textContent = "Termine.";
-  Licence.consommerListe(); // 1 liste gratuite consommee (sans effet si deja licencie)
+  if (!Licence.isLicensed()) await Trial.consume(); // consomme la liste gratuite (serveur)
   majBadgeLicence();
   bilanConsole(fiches);
   rendreDashboard();
@@ -341,24 +343,77 @@ function exporterCSV() {
 }
 
 // ---------------------------------------------------------------------------
-// Licence : badge d'etat + acces vendeur
+// Licence + essai (serveur) : badge, garde, ecran e-mail, acces vendeur
 // ---------------------------------------------------------------------------
 function majBadgeLicence() {
   const b = $("lic-badge");
   if (!b) return;
   if (Licence.isLicensed()) {
     b.innerHTML = `&#10003; <b>Version complete</b> — debloquee a vie (${escTexte(Licence.licensedEmail() || "")}).`;
-  } else {
-    const reste = Licence.listesGratuitesRestantes();
-    const dispo = reste > 0
-      ? `Version d'essai : <b>1 liste gratuite</b> disponible.`
-      : `Essai termine. Analyse illimitee avec la licence a vie (${escTexte(Licence.PRIX)}).`;
-    b.innerHTML = `${dispo} <span class="lien" id="lien-licence">J'ai une cle, l'activer</span>`;
-    const l = $("lien-licence");
-    if (l) l.addEventListener("click", () => Licence.openActivate());
+    return;
   }
+  const left = Trial.usesLeft; // null = inconnu (hors-ligne) -> on n'affiche pas "termine"
+  const dispo = left === 0
+    ? `Essai termine. Analyse illimitee avec la licence a vie (${escTexte(Licence.PRIX)}).`
+    : `Version d'essai : <b>1 liste gratuite</b>.`;
+  b.innerHTML = `${dispo} <span class="lien" id="lien-licence">J'ai une cle, l'activer</span>`;
+  const l = $("lien-licence");
+  if (l) l.addEventListener("click", () => Licence.openActivate());
 }
 function escTexte(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+
+// Garde d'acces a une analyse : licence, sinon 1 liste d'essai (compteur serveur).
+async function autoriserAnalyse() {
+  if (Licence.isLicensed()) return true;
+  if (!Trial.hasEmail()) {
+    await showStartGate();
+    if (Licence.isLicensed()) return true;
+    if (!Trial.hasEmail()) return false;
+  }
+  await Trial.status();
+  majBadgeLicence();
+  if (Trial.usesLeft === 0) { Licence.openSheet(true); return false; }
+  return true; // > 0, ou null (hors-ligne) = fail-open
+}
+
+// Ecran e-mail au 1er lancement (parite avec Resolv). Non annulable, sauf "j'ai deja une cle".
+// Renvoie une promesse resolue quand l'e-mail est saisi OU la licence activee.
+function showStartGate() {
+  return new Promise((resolve) => {
+    const back = document.createElement("div");
+    back.className = "rlic-back";
+    back.innerHTML = `<div class="rlic-sheet">
+      <h3>&#128225; Bienvenue sur Radar Google</h3>
+      <p class="rlic-hint">Entre ton e-mail pour activer ta <b>liste d'essai gratuite</b>. Il sert juste a garder le compte de ton essai (jamais partage, jamais de spam) et, plus tard, a retrouver ta licence.</p>
+      <label class="rlic-field"><span class="lab">Ton e-mail</span>
+        <input type="email" id="sg-email" placeholder="ton@email.fr" autocomplete="email" autocapitalize="off" spellcheck="false"></label>
+      <div id="sg-status" class="rlic-status"></div>
+      <div class="rlic-row">
+        <button class="rlic-btn ghost" id="sg-licence">J'ai deja une cle</button>
+        <button class="rlic-btn primary" id="sg-ok">Continuer</button>
+      </div>
+      <div class="rlic-version" id="rlic-version">Radar Google v1</div>
+    </div>`;
+    document.body.appendChild(back);
+    // acces vendeur depuis la version de cet ecran aussi
+    Vendeur.bindLongPress(back.querySelector("#rlic-version"));
+
+    const finir = () => { back.remove(); window.removeEventListener("radar-licence-change", onLic); resolve(); };
+    const onLic = () => { if (Licence.isLicensed()) finir(); };
+    window.addEventListener("radar-licence-change", onLic);
+
+    back.querySelector("#sg-licence").addEventListener("click", () => Licence.openActivate());
+    back.querySelector("#sg-ok").addEventListener("click", async () => {
+      const e = back.querySelector("#sg-email").value.trim();
+      const st = back.querySelector("#sg-status");
+      if (!Trial.valid(e)) { st.textContent = "Entre un e-mail valide."; return; }
+      Trial.setEmail(e);
+      st.textContent = "Activation de l'essai…";
+      await Trial.status();
+      finir();
+    });
+  });
+}
 
 window.addEventListener("radar-licence-change", majBadgeLicence);
 // acces au mode vendeur depuis la ligne de version en bas de l'ecran Import
@@ -370,4 +425,12 @@ Vendeur.bindLongPress($("rlic-version-footer"));
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
-Licence.init().then(() => { majBadgeLicence(); router(); });
+(async () => {
+  Trial.load();
+  await Licence.init();
+  // e-mail demande au demarrage (comme Resolv), sauf si deja licencie ou deja saisi
+  if (!Licence.isLicensed() && !Trial.hasEmail()) await showStartGate();
+  if (!Licence.isLicensed() && Trial.hasEmail()) await Trial.status();
+  majBadgeLicence();
+  router();
+})();

@@ -13,8 +13,10 @@ const PUB = { kty: "EC", crv: "P-256",
   y: "ypDSAMbv2P3_gf1C8YkBygW4i6pb5wMINBElVTooT9I" };
 
 const LKEY = "radar.lic";        // stocke a part : survit a un reset des reglages
-const LISTES_GRATUITES = 1;      // 1 liste complete gratuite, puis licence
 export const PRIX = "29 €"; // <-- PRIX AFFICHE AU CLIENT. A ajuster librement.
+// L'essai gratuit (1 liste) est compte cote SERVEUR par e-mail (voir trial.js),
+// pas ici : reinstaller ne le remet donc pas a zero. licence.js ne gere que la
+// licence PAYANTE (verification de la signature).
 
 let state = null;
 let verified = false;
@@ -23,8 +25,7 @@ const normEmail = (e) => (e || "").trim().toLowerCase();
 
 function load() {
   try { state = JSON.parse(localStorage.getItem(LKEY)); } catch (e) { state = null; }
-  if (!state || typeof state !== "object") { state = { email: null, listes: 0, key: null }; save(); }
-  if (typeof state.listes !== "number") state.listes = 0;
+  if (!state || typeof state !== "object") { state = { email: null, key: null }; save(); }
 }
 function save() { try { localStorage.setItem(LKEY, JSON.stringify(state)); } catch (e) {} }
 
@@ -58,20 +59,8 @@ export const Licence = {
   },
   isLicensed() { return verified; },
   licensedEmail() { return verified ? state.email : null; },
-  listesGratuitesRestantes() { return Math.max(0, LISTES_GRATUITES - state.listes); },
-  // true si une nouvelle analyse de liste est permise (licence, ou liste gratuite restante).
-  canAnalyser() { return verified || this.listesGratuitesRestantes() > 0; },
-  // A appeler APRES une analyse de liste reussie.
-  consommerListe() { if (!verified) { state.listes++; save(); } },
   activate,
   PRIX,
-
-  // Garde : true si permis, sinon ouvre le mur payant et renvoie false.
-  guard() {
-    if (this.canAnalyser()) return true;
-    this.openSheet(true);
-    return false;
-  },
   openActivate() { this.openSheet(false); },
 
   // Ecran d'activation. isPaywall=true quand l'essai gratuit est epuise.
