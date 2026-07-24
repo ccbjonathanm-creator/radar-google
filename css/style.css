@@ -60,6 +60,9 @@ label.champ a{color:var(--cyan)}
 .btn-secondaire:hover{border-color:var(--cyan)}
 .btn-secondaire .mini{font-size:11px;font-weight:600;color:var(--cyan);background:#0e1c2c;
   border:1px solid #2a4a6a;border-radius:20px;padding:2px 8px}
+.btn-retour{background:transparent;color:var(--cyan);border:1px solid var(--line);border-radius:10px;
+  padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:14px}
+.btn-retour:hover{border-color:var(--cyan)}
 .ou-sep{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:13px;margin:16px 0;text-transform:uppercase;letter-spacing:1px}
 .ou-sep:before,.ou-sep:after{content:"";flex:1;height:1px;background:var(--line)}
 .note-cle{background:#0d1c17;border-left:3px solid var(--green);padding:12px 14px;border-radius:8px;

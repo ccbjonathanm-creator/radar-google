@@ -228,6 +228,7 @@ $("btn-nouvelle").addEventListener("click", () => {
 // ---------------------------------------------------------------------------
 $("btn-recherche").addEventListener("click", ouvrirRecherche);
 $("btn-vers-recherche").addEventListener("click", ouvrirRecherche);
+$("btn-recherche-retour").addEventListener("click", () => montrer("import"));
 $("btn-rechercher").addEventListener("click", lancerRecherche);
 
 function ouvrirRecherche() {
