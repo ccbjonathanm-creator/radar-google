@@ -1,4 +1,4 @@
-const CACHE = "radar-v8";
+const CACHE = "radar-v9";
 const ASSETS = [
   "./",
   "./index.html",

@@ -229,7 +229,17 @@ $("btn-nouvelle").addEventListener("click", () => {
 $("btn-recherche").addEventListener("click", ouvrirRecherche);
 $("btn-vers-recherche").addEventListener("click", ouvrirRecherche);
 $("btn-recherche-retour").addEventListener("click", () => montrer("import"));
-$("btn-rechercher").addEventListener("click", lancerRecherche);
+$("btn-rechercher").addEventListener("click", () => {
+  // Filet de securite : toute erreur inattendue devient un message visible
+  // (au lieu d'un "rien ne se passe" si un fichier est en cache incoherent).
+  Promise.resolve().then(lancerRecherche).catch((e) => {
+    rechercheEnCours = false;
+    $("btn-rechercher").disabled = false;
+    $("r-progress").classList.add("hidden");
+    afficherLimiteR("Erreur inattendue : " + ((e && e.message) ? e.message : e) +
+      ". Ferme et rouvre l'appli pour recharger la derniere version.", "warn");
+  });
+});
 
 function ouvrirRecherche() {
   if (!aUneCleGoogle()) {          // la recherche a besoin de la cle Google
