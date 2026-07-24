@@ -553,7 +553,14 @@ Vendeur.bindLongPress($("rlic-version-recherche"));
 // Service worker + demarrage
 // ---------------------------------------------------------------------------
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  // Recharge une fois quand une nouvelle version prend la main (evite le code perime).
+  let recharge = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!recharge) { recharge = true; location.reload(); }
+  });
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then((reg) => reg.update()).catch(() => {});
+  });
 }
 (async () => {
   Trial.load();

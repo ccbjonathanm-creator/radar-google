@@ -1,4 +1,4 @@
-const CACHE = "radar-v6";
+const CACHE = "radar-v7";
 const ASSETS = [
   "./",
   "./index.html",
@@ -31,25 +31,24 @@ self.addEventListener("activate", (e) => {
   );
 });
 
+// RESEAU D'ABORD (avec repli cache hors-ligne) : garantit que le code a jour
+// s'affiche des qu'il y a du reseau. L'ancien defaut "cache d'abord" resservait
+// une version perimee apres chaque deploiement. Les appels API (Google, Groq,
+// Worker) ne sont jamais mis en cache (autre origine, ignores plus bas).
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  // On ne met en cache QUE les fichiers de l'app (meme origine).
-  // Les appels API (Google, Groq) passent toujours par le reseau.
-  if (url.origin !== location.origin) return;
+  if (url.origin !== location.origin) return; // API externes : toujours le reseau direct
   e.respondWith(
-    caches.match(req).then((hit) => {
-      if (hit) return hit;
-      return fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-          return res;
-        })
-        .catch(() => {
-          if (req.mode === "navigate") return caches.match("./index.html");
-        });
-    })
+    fetch(req)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        return res;
+      })
+      .catch(() =>
+        caches.match(req).then((hit) => hit || (req.mode === "navigate" ? caches.match("./index.html") : undefined))
+      )
   );
 });
