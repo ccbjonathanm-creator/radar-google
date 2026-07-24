@@ -278,8 +278,12 @@ async function lancerRecherche() {
 
   const filtres = {
     metier, ville,
-    sansSite: $("r-sans-site").checked,
-    noteMax: $("r-note-max").value,
+    presenceWeb: $("r-presence").value,
+    note: $("r-note").value,
+    avis: $("r-avis").value,
+    avecTel: $("r-avec-tel").checked,
+    exclureFermes: $("r-exclure-fermes").checked,
+    tri: $("r-tri").value,
     max: $("r-max").value,
   };
   rechercheEnCours = true;

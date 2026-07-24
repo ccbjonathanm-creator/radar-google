@@ -106,22 +106,56 @@
       <input id="r-ville" type="text" autocomplete="off" placeholder="ex. Chalon-sur-Saone, Macon, Le Creusot...">
     </label>
 
+    <label class="champ">
+      <span class="lab">Presence web</span>
+      <select id="r-presence">
+        <option value="peu">Peu importe</option>
+        <option value="sans">Sans site web (meilleure cible pour vendre un site)</option>
+        <option value="avec">Avec un site web</option>
+      </select>
+    </label>
+
+    <label class="champ">
+      <span class="lab">Note Google</span>
+      <select id="r-note">
+        <option value="">Toutes les notes</option>
+        <option value="sans">Sans note (aucun avis)</option>
+        <option value="faible">Note faible (3,5 &#9733; et moins)</option>
+        <option value="moyenne">Note moyenne (3,5 a 4,2 &#9733;)</option>
+        <option value="bonne">Bonne note (4,3 &#9733; et plus)</option>
+      </select>
+      <span class="sous">Cible une e-reputation a ameliorer (note faible / sans avis) ou au contraire les fiches deja etablies.</span>
+    </label>
+
+    <label class="champ">
+      <span class="lab">Nombre d'avis</span>
+      <select id="r-avis">
+        <option value="">Peu importe</option>
+        <option value="aucun">Aucun avis</option>
+        <option value="moins10">Moins de 10 avis</option>
+        <option value="moins50">Moins de 50 avis</option>
+        <option value="plus50">Plus de 50 avis</option>
+      </select>
+    </label>
+
     <div class="options">
-      <label class="opt-row"><input type="checkbox" id="r-sans-site">
-        <span class="txt"><span class="ot">Seulement les pros sans site web</span>
-        <span class="od">Les meilleures cibles pour vendre un site : une fiche Google mais aucun site derriere.</span></span></label>
+      <label class="opt-row"><input type="checkbox" id="r-avec-tel" checked>
+        <span class="txt"><span class="ot">Seulement les pros avec un numero a appeler</span>
+        <span class="od">Ecarte les fiches sans telephone (inutiles pour du phoning).</span></span></label>
+      <label class="opt-row"><input type="checkbox" id="r-exclure-fermes" checked>
+        <span class="txt"><span class="ot">Exclure les etablissements fermes</span>
+        <span class="od">Retire les fiches definitivement ou temporairement fermees.</span></span></label>
     </div>
 
     <label class="champ">
-      <span class="lab">Note maximale <span class="opt">(optionnel)</span></span>
-      <select id="r-note-max">
-        <option value="">Toutes les notes</option>
-        <option value="4.5">4,5 &#9733; et moins</option>
-        <option value="4">4,0 &#9733; et moins</option>
-        <option value="3.5">3,5 &#9733; et moins</option>
-        <option value="3">3,0 &#9733; et moins</option>
+      <span class="lab">Trier par</span>
+      <select id="r-tri">
+        <option value="priorite">Priorite de vente (les plus vendables en haut)</option>
+        <option value="note_asc">Note : faible &#8594; forte</option>
+        <option value="note_desc">Note : forte &#8594; faible</option>
+        <option value="avis_asc">Nombre d'avis : croissant</option>
+        <option value="avis_desc">Nombre d'avis : decroissant</option>
       </select>
-      <span class="sous">Cible les fiches a note faible (e-reputation a ameliorer). Laisse "Toutes" pour ne pas filtrer.</span>
     </label>
 
     <label class="champ">

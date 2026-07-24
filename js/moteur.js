@@ -36,7 +36,7 @@ export async function placesRecherche(requete, cle) {
 export async function placesRecherchePage(requete, cle, pageToken) {
   const champs = "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber," +
     "places.websiteUri,places.rating,places.userRatingCount,places.primaryTypeDisplayName," +
-    "places.googleMapsUri,nextPageToken";
+    "places.googleMapsUri,places.businessStatus,nextPageToken";
   const body = { textQuery: requete, languageCode: "fr", regionCode: "FR", pageSize: 20 };
   if (pageToken) body.pageToken = pageToken;
   const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
@@ -316,7 +316,47 @@ export function placeVersFiche(place, ville) {
   return fiche;
 }
 
-// Recherche de prospects par filtres. filtres = { metier, ville, sansSite, noteMax, max }.
+// Construit le predicat de filtrage cote client a partir des criteres choisis.
+// filtres : { presenceWeb, note, avis, avecTel, exclureFermes }.
+function construirePredicat(f) {
+  return (p) => {
+    // Presence web
+    if (f.presenceWeb === "sans" && p.websiteUri) return false;
+    if (f.presenceWeb === "avec" && !p.websiteUri) return false;
+    // Note Google (buckets)
+    const r = p.rating != null ? p.rating : null;
+    if (f.note === "sans" && r != null) return false;
+    if (f.note === "faible" && !(r != null && r <= 3.5)) return false;
+    if (f.note === "moyenne" && !(r != null && r > 3.5 && r < 4.3)) return false;
+    if (f.note === "bonne" && !(r != null && r >= 4.3)) return false;
+    // Nombre d'avis (buckets)
+    const n = p.userRatingCount != null ? p.userRatingCount : 0;
+    if (f.avis === "aucun" && n !== 0) return false;
+    if (f.avis === "moins10" && !(n < 10)) return false;
+    if (f.avis === "moins50" && !(n < 50)) return false;
+    if (f.avis === "plus50" && !(n >= 50)) return false;
+    // Joignable par telephone
+    if (f.avecTel && !p.nationalPhoneNumber) return false;
+    // Etablissement ferme (definitif ou temporaire)
+    if (f.exclureFermes && p.businessStatus && p.businessStatus !== "OPERATIONAL") return false;
+    return true;
+  };
+}
+
+function valNote(f) { return typeof f.note === "number" ? f.note : -1; }
+function valAvis(f) { return typeof f.avis === "number" ? f.avis : 0; }
+
+// Applique le tri demande (defaut = priorite de vente).
+function trierResultats(fiches, tri) {
+  if (tri === "note_asc") return fiches.slice().sort((a, b) => valNote(a) - valNote(b));
+  if (tri === "note_desc") return fiches.slice().sort((a, b) => valNote(b) - valNote(a));
+  if (tri === "avis_asc") return fiches.slice().sort((a, b) => valAvis(a) - valAvis(b));
+  if (tri === "avis_desc") return fiches.slice().sort((a, b) => valAvis(b) - valAvis(a));
+  return trierParPriorite(fiches);
+}
+
+// Recherche de prospects par filtres.
+// filtres = { metier, ville, presenceWeb, note, avis, avecTel, exclureFermes, tri, max }.
 // onProgress(nbTrouves) est appele apres chaque page. Renvoie un tableau de fiches.
 export async function rechercherProspects(filtres, cle, onProgress) {
   const metier = (filtres.metier || "").trim();
@@ -324,7 +364,7 @@ export async function rechercherProspects(filtres, cle, onProgress) {
   const requete = `${metier} ${ville}`.trim();
   if (!requete) throw new Error("Indique au moins un metier ou une ville.");
   const cible = Math.min(Math.max(parseInt(filtres.max, 10) || 20, 1), 60);
-  const noteMax = filtres.noteMax != null && filtres.noteMax !== "" ? parseFloat(filtres.noteMax) : null;
+  const passe = construirePredicat(filtres);
 
   const fiches = [];
   const vus = new Set();
@@ -334,11 +374,7 @@ export async function rechercherProspects(filtres, cle, onProgress) {
     for (const p of places) {
       if (!p.id || vus.has(p.id)) continue;
       vus.add(p.id);
-      if (filtres.sansSite && p.websiteUri) continue;
-      if (noteMax != null) {
-        // on garde les notes faibles ET les sans-note (presence faible = bonne cible)
-        if (p.rating != null && p.rating > noteMax) continue;
-      }
+      if (!passe(p)) continue;
       fiches.push(placeVersFiche(p, ville));
       if (fiches.length >= cible) break;
     }
@@ -347,7 +383,7 @@ export async function rechercherProspects(filtres, cle, onProgress) {
     token = nextPageToken;
     await new Promise((r) => setTimeout(r, 350)); // le jeton de page a besoin d'un court delai
   }
-  return trierParPriorite(fiches);
+  return trierResultats(fiches, filtres.tri);
 }
 
 // Tri : les plus "vendables" en haut.
