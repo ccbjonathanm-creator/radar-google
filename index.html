@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#05080f">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://places.googleapis.com https://api.groq.com https://resolv-trials.contactweb71.workers.dev; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Radar Google - presence Google des prospects</title>
+<title>Radar Google — Intelligence commerciale locale</title>
 <meta name="description" content="Analyse la presence Google de vos prospects (fiche, note, avis, position, site) et prepare vos appels : angle de vente et accroche a lire, tableau de bord a recherche instantanee.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-64.png" sizes="64x64" type="image/png">
@@ -13,18 +13,30 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<div class="ambient" aria-hidden="true">
+  <span class="ambient-grid"></span>
+  <span class="ambient-glow ambient-glow-one"></span>
+  <span class="ambient-glow ambient-glow-two"></span>
+</div>
 <header>
   <div class="head-row">
-    <h1>&#128225; RADAR GOOGLE</h1>
-    <button class="head-btn ghost" id="btn-nouvelle" hidden>&#128193; Nouvelle liste</button>
-    <button class="head-btn" id="btn-recherche">&#128269; Rechercher</button>
-    <button class="head-btn" id="btn-reglages">&#9881;&#65039; Reglages</button>
+    <div class="brand" aria-label="Radar Google">
+      <span class="brand-mark" aria-hidden="true"><i></i></span>
+      <span class="brand-copy"><strong>RADAR</strong><small>GOOGLE INTELLIGENCE</small></span>
+    </div>
+    <div class="head-status"><i></i><span>Système prêt</span></div>
+    <nav class="head-actions" aria-label="Navigation principale">
+      <button class="head-btn ghost" id="btn-nouvelle" hidden><span class="nav-icon">＋</span> Nouvelle liste</button>
+      <button class="head-btn" id="btn-recherche"><span class="nav-icon">⌕</span> Rechercher</button>
+      <button class="head-btn icon-only" id="btn-reglages" aria-label="Réglages"><span class="nav-icon">⚙</span><span class="desktop-label">Réglages</span></button>
+    </nav>
   </div>
 </header>
 
 <!-- ============ ECRAN REGLAGES ============ -->
 <main id="vue-reglages" class="hidden">
   <div class="panneau">
+    <div class="eyebrow"><i></i> Configuration sécurisée</div>
     <h2>Reglages des cles</h2>
     <p class="aide">Radar Google interroge Google Maps depuis ton appareil. Tes cles restent sur ce
       telephone/PC (rien n'est envoye ailleurs) et servent uniquement a lire les fiches.</p>
@@ -51,8 +63,32 @@
 
 <!-- ============ ECRAN IMPORT ============ -->
 <main id="vue-import" class="hidden">
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow"><i></i> Intelligence commerciale locale</div>
+      <h2>Transformez chaque donnée<br>en <em>opportunité.</em></h2>
+      <p>Détectez les entreprises à fort potentiel, comprenez leurs faiblesses digitales et préparez l’angle de vente qui fera la différence.</p>
+    </div>
+    <div class="radar-visual" aria-hidden="true">
+      <div class="radar-ring ring-one"></div>
+      <div class="radar-ring ring-two"></div>
+      <div class="radar-ring ring-three"></div>
+      <div class="radar-cross radar-cross-x"></div>
+      <div class="radar-cross radar-cross-y"></div>
+      <div class="radar-sweep"></div>
+      <span class="radar-dot dot-one"></span>
+      <span class="radar-dot dot-two"></span>
+      <span class="radar-dot dot-three"></span>
+      <div class="radar-center"></div>
+    </div>
+  </section>
+
+  <div class="section-heading">
+    <div><span class="step-number">01</span><h3>Importez votre base</h3></div>
+    <span class="secure-note">Traitement local &amp; sécurisé</span>
+  </div>
   <div class="dropzone" id="dropzone">
-    <div class="gicon">&#128228;</div>
+    <div class="gicon"><span></span></div>
     <div class="t1">Glisse ta liste de prospects ici</div>
     <div class="t2">ou clique pour choisir un fichier CSV (export Flunter ou autre)</div>
     <div class="fichier" id="nom-fichier"></div>
@@ -92,6 +128,7 @@
 <main id="vue-recherche" class="hidden">
   <div class="panneau">
     <button class="btn-retour" id="btn-recherche-retour">&#8592; Revenir a l'import CSV</button>
+    <div class="eyebrow"><i></i> Acquisition ciblée</div>
     <h2>&#128269; Rechercher des prospects</h2>
     <p class="aide">Trouve directement des professionnels sur Google Maps par metier et par zone,
       sans importer de fichier. Ensuite : exporte-les en CSV (Excel) ou analyse-les tout de suite dans l'appli.</p>
@@ -183,6 +220,10 @@
 
 <!-- ============ ECRAN TABLEAU DE BORD ============ -->
 <main id="vue-dashboard" class="hidden">
+  <div class="dashboard-intro">
+    <div><div class="eyebrow"><i></i> Centre d'opportunités</div><h2>Vos prospects qualifiés</h2></div>
+    <div class="live-badge"><i></i> Données actives</div>
+  </div>
   <input id="q" placeholder="Tape le nom du prospect qui decroche..." autocomplete="off">
   <div class="compte" id="compte"></div>
   <div class="barre-actions">

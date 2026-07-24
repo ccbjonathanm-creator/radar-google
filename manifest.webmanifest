@@ -1,13 +1,13 @@
 {
-  "name": "Radar Google - presence Google des prospects",
+  "name": "Radar Google - Intelligence commerciale locale",
   "short_name": "Radar Google",
   "description": "Analyse la presence Google de vos prospects (fiche, note, avis, position, site) et prepare vos appels : angle de vente et accroche a lire.",
   "lang": "fr",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
-  "background_color": "#0b1220",
-  "theme_color": "#0b1220",
+  "background_color": "#05080f",
+  "theme_color": "#05080f",
   "orientation": "any",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
