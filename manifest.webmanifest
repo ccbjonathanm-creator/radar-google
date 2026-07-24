@@ -1,0 +1,17 @@
+{
+  "name": "Radar Google - presence Google des prospects",
+  "short_name": "Radar Google",
+  "description": "Analyse la presence Google de vos prospects (fiche, note, avis, position, site) et prepare vos appels : angle de vente et accroche a lire.",
+  "lang": "fr",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "orientation": "any",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

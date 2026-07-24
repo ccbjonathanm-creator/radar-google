@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://places.googleapis.com https://api.groq.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Radar Google - presence Google des prospects</title>
+<meta name="description" content="Analyse la presence Google de vos prospects (fiche, note, avis, position, site) et prepare vos appels : angle de vente et accroche a lire, tableau de bord a recherche instantanee.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-64.png" sizes="64x64" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <div class="head-row">
+    <h1>&#128225; RADAR GOOGLE</h1>
+    <button class="head-btn ghost" id="btn-nouvelle" hidden>&#128193; Nouvelle liste</button>
+    <button class="head-btn" id="btn-reglages">&#9881;&#65039; Reglages</button>
+  </div>
+</header>
+
+<!-- ============ ECRAN REGLAGES ============ -->
+<main id="vue-reglages" class="hidden">
+  <div class="panneau">
+    <h2>Reglages des cles</h2>
+    <p class="aide">Radar Google interroge Google Maps depuis ton appareil. Tes cles restent sur ce
+      telephone/PC (rien n'est envoye ailleurs) et servent uniquement a lire les fiches.</p>
+
+    <label class="champ">
+      <span class="lab">Cle Google Places <span style="color:var(--red)">*</span> (obligatoire)</span>
+      <input id="in-google" type="text" autocomplete="off" spellcheck="false" placeholder="AIza...">
+      <span class="sous">A creer une fois sur <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> (API "Places API (New)"). Voir le guide PDF.</span>
+    </label>
+
+    <label class="champ">
+      <span class="lab">Cle Groq <span class="opt">(optionnelle, pour l'accroche reformulee par l'IA)</span></span>
+      <input id="in-groq" type="text" autocomplete="off" spellcheck="false" placeholder="gsk_...">
+      <span class="sous">Gratuite sur <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Laisse vide si tu n'en veux pas.</span>
+    </label>
+
+    <div class="barre-actions">
+      <button class="btn-primaire" id="btn-tester">Tester &amp; enregistrer</button>
+      <button class="head-btn" id="btn-annuler-reglages" hidden>Annuler</button>
+    </div>
+    <div class="msg-test" id="msg-test"></div>
+  </div>
+</main>
+
+<!-- ============ ECRAN IMPORT ============ -->
+<main id="vue-import" class="hidden">
+  <div class="dropzone" id="dropzone">
+    <div class="gicon">&#128228;</div>
+    <div class="t1">Glisse ta liste de prospects ici</div>
+    <div class="t2">ou clique pour choisir un fichier CSV (export Flunter ou autre)</div>
+    <div class="fichier" id="nom-fichier"></div>
+    <input id="file-input" type="file" accept=".csv,text/csv" hidden>
+  </div>
+
+  <div class="options">
+    <label class="opt-row"><input type="checkbox" id="opt-avis" checked>
+      <span class="txt"><span class="ot">Analyser les avis negatifs</span>
+      <span class="od">Remonte les avis a 3&#9733; et moins (1 appel Google de plus par fiche trouvee).</span></span></label>
+    <label class="opt-row"><input type="checkbox" id="opt-position" checked>
+      <span class="txt"><span class="ot">Calculer la position indicative</span>
+      <span class="od">Position approximative dans "&lt;metier&gt; &lt;ville&gt;" (1 appel de plus par fiche).</span></span></label>
+    <label class="opt-row"><input type="checkbox" id="opt-ia" checked>
+      <span class="txt"><span class="ot">Accroche reformulee par l'IA (Groq)</span>
+      <span class="od">Phrase d'ouverture naturelle et personnalisee. Necessite la cle Groq.</span></span></label>
+  </div>
+
+  <div id="zone-limite" class="avert hidden"></div>
+
+  <button class="btn-primaire" id="btn-analyser" disabled style="width:100%">Analyser la liste</button>
+
+  <div id="zone-progress" class="hidden" style="margin-top:16px">
+    <div class="barre"><i id="prog-barre"></i></div>
+    <div class="prog-txt" id="prog-txt"></div>
+  </div>
+</main>
+
+<!-- ============ ECRAN TABLEAU DE BORD ============ -->
+<main id="vue-dashboard" class="hidden">
+  <input id="q" placeholder="Tape le nom du prospect qui decroche..." autocomplete="off">
+  <div class="compte" id="compte"></div>
+  <div class="barre-actions">
+    <button class="btn-obj" id="btn-toggle-obj">&#128481;&#65039; Reponses aux objections</button>
+    <button class="btn-obj" id="btn-export">&#11015;&#65039; Exporter le CSV enrichi</button>
+  </div>
+  <div id="objwrap"><div id="obj">
+    <h2>Quand il resiste, voici quoi repondre</h2>
+    <details><summary>"J'ai deja un site / une fiche Google"</summary>
+      <div class="rep">Justement, avoir une fiche ne sert a rien si vos clients tombent d'abord sur vos concurrents. 3 personnes sur 4 ne regardent que les premiers resultats. La vraie question : quand on cherche votre metier dans votre secteur, vous sortez ou exactement ? On verifie ensemble en 2 minutes.</div></details>
+    <details><summary>"Ca coute cher / je n'ai pas de budget"</summary>
+      <div class="rep">C'est un investissement, pas une depense. Pour un artisan, UN seul chantier decroche grace a une meilleure visibilite rembourse souvent toute la prestation. La vraie question c'est le rendement : un nouveau client, ca vous rapporte combien en moyenne ? On part de la, et on commence par ce qui rapporte le plus vite.</div></details>
+    <details><summary>"Je n'ai pas le temps"</summary>
+      <div class="rep">Justement, tout le travail c'est moi qui le fais, pas vous. Vous ne perdez pas de temps, vous en gagnez : pendant que vous etes sur vos chantiers, votre visibilite tourne toute seule. Je vous rappelle quand, ce soir ou plutot demain matin ?</div></details>
+    <details><summary>"Le bouche a oreille me suffit"</summary>
+      <div class="rep">Et c'est une vraie force, on la garde. Sauf qu'aujourd'hui, meme recommande, le client verifie sur Google avant d'appeler. S'il ne trouve pas de fiche ou pas d'avis, il doute et appelle le concurrent d'a cote. On securise juste ces clients-la, ceux qu'on vous prend en ce moment sans que vous le voyiez.</div></details>
+    <details><summary>"Envoyez-moi un mail / une doc"</summary>
+      <div class="rep">Avec plaisir. Mais un mail finit souvent non lu, alors pour qu'il soit vraiment utile : c'est surtout la visibilite, les avis ou le site qui vous manque le plus aujourd'hui ? Je vous prepare quelque chose de precis sur ce point et je vous rappelle en fin de semaine pour votre avis.</div></details>
+    <details><summary>"Je vais reflechir"</summary>
+      <div class="rep">Bien sur, c'est normal. Juste pour ne pas vous rappeler pour rien : qu'est-ce qui vous fait hesiter, le principe, le moment ou le budget ? Souvent derriere "je reflechis" il y a une vraie question, et j'y reponds tout de suite.</div></details>
+    <details><summary>"Comment vous avez eu mon numero ?"</summary>
+      <div class="rep">Votre activite est publique, je fais un reperage local des pros qui gagneraient a etre plus visibles sur Google, et votre fiche est ressortie. Rien de plus, et je vous retire de ma liste si vous le souhaitez.</div></details>
+  </div></div>
+  <div id="liste" style="margin-top:16px"></div>
+</main>
+
+<script type="module" src="js/app.js"></script>
+<script src="install-pwa.js" data-app-name="Radar Google" data-accent="#38e1ff"></script>
+</body>
+</html>
