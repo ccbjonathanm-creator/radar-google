@@ -142,6 +142,13 @@ main{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:36px 24px
 .panneau h2{font-size:clamp(23px,4vw,32px);font-weight:560;letter-spacing:-.035em;margin:0 0 10px;color:var(--txt)}
 .panneau .aide{color:var(--dim);font-size:14px;line-height:1.65;margin:0 0 26px;max-width:720px}
 
+/* Lien vers le guide PDF, dans l'ecran Reglages : c'est la que le client
+   bloque (creation de la cle Google), donc le guide doit etre a portee. */
+.lien-guide{display:block;text-decoration:none;margin:0 0 26px;padding:14px 16px;
+  border:1px solid var(--line);border-radius:12px;background:rgba(56,225,255,.06);
+  color:var(--cyan,#38e1ff);font-weight:700;font-size:14px;transition:border-color .2s,background .2s}
+.lien-guide:hover{background:rgba(56,225,255,.11);border-color:rgba(56,225,255,.45)}
+.lien-guide span{display:block;margin-top:4px;color:var(--dim);font-weight:500;font-size:12.5px;line-height:1.5}
 label.champ{display:block;margin-bottom:21px}
 label.champ .lab{display:block;font-size:12px;font-weight:650;letter-spacing:.015em;margin-bottom:8px;color:#c7d2d9}
 label.champ .lab .opt{color:var(--dim);font-weight:400}
