@@ -14,6 +14,8 @@ const PUB = { kty: "EC", crv: "P-256",
 
 const LKEY = "radar.lic";        // stocke a part : survit a un reset des reglages
 export const PRIX = "10 €"; // <-- PRIX AFFICHE AU CLIENT. A ajuster librement.
+// Page d'achat (tunnel Stripe, cle envoyee automatiquement par e-mail).
+export const LIEN_ACHAT = "https://generationapp.fr/applications/radar-google/acheter/";
 // L'essai gratuit (1 liste) est compte cote SERVEUR par e-mail (voir trial.js),
 // pas ici : reinstaller ne le remet donc pas a zero. licence.js ne gere que la
 // licence PAYANTE (verification de la signature).
@@ -91,11 +93,13 @@ export const Licence = {
 
     const banner = isPaywall
       ? `<div class="rlic-info">Tu as utilise ta <b>liste gratuite</b>. Pour analyser autant de listes que tu veux, debloque Radar Google <b>a vie pour ${esc(PRIX)}</b> (paiement unique, aucun abonnement).</div>`
-      : `<p class="rlic-hint">Tu as achete Radar Google ? Saisis ton e-mail d'achat et la cle qu'on t'a envoyee pour debloquer l'appli a vie.</p>`;
+      : `<p class="rlic-hint">Debloque Radar Google <b>a vie pour ${esc(PRIX)}</b> : paiement unique, aucun abonnement. La cle arrive par e-mail juste apres le paiement.</p>`;
 
     back.innerHTML = `<div class="rlic-sheet">
       <h3>&#128274; ${isPaywall ? "Debloque Radar Google a vie" : "Activer ma licence"}</h3>
       ${banner}
+      <div class="rlic-row"><a class="rlic-btn primary rlic-buy" href="${LIEN_ACHAT}" target="_blank" rel="noopener">Acheter — ${esc(PRIX)}</a></div>
+      <p class="rlic-sep">Deja achete ? Saisis ton e-mail et ta cle ci-dessous.</p>
       <p class="rlic-hint">La cle est liee a ton e-mail : elle marche sur tous tes appareils, meme apres une reinstallation.</p>
       <label class="rlic-field"><span class="lab">E-mail d'achat</span>
         <input type="email" id="rlic-email" placeholder="Ton e-mail d'achat" autocomplete="email" autocapitalize="off" spellcheck="false"></label>

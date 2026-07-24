@@ -278,6 +278,10 @@ mark{background:rgba(105,217,255,.18);color:inherit;border-radius:3px;padding:0 
 .rlic-row{display:flex;gap:9px;justify-content:flex-end;margin-top:6px}
 .rlic-btn{padding:11px 16px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--line)}
 .rlic-btn.primary{background:linear-gradient(135deg,#a7ecff,#5dc4e7);color:#041018;border:0}.rlic-btn.ghost{background:transparent;color:#aebcc4}
+/* Bouton d'ACHAT : c'est un lien, il doit ressembler exactement a un bouton. */
+a.rlic-btn{display:inline-block;text-decoration:none;text-align:center}
+.rlic-buy{width:100%}
+.rlic-sep{font-size:11px;color:#8c9aa3;text-align:center;margin:14px 0 10px;position:relative}
 .rlic-out{margin-top:12px;background:#080d15;border:1px solid var(--line);border-radius:10px;padding:12px}
 .rlic-key{word-break:break-all;font-family:ui-monospace,monospace;font-size:11px;color:var(--green)}
 #rlic-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#10271e;color:#d2f4e7;border:1px solid rgba(94,226,173,.2);border-radius:12px;padding:11px 17px;font-size:12px;font-weight:600;z-index:2147483600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:90vw;text-align:center;box-shadow:0 18px 45px rgba(0,0,0,.35)}

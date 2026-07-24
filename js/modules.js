@@ -10,6 +10,10 @@
    ============================================================ */
 import { verifSubject, toast } from "./licence.js";
 
+// Page d'achat du module seul (le client possede deja l'appli, ou l'achetera
+// a part). Le tunnel envoie la cle par e-mail automatiquement.
+const LIEN_ACHAT_MODULE = "https://generationapp.fr/applications/radar-google/acheter/?produit=module";
+
 const normEmail = (e) => (e || "").trim().toLowerCase();
 const esc = (s) => { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; };
 
@@ -65,11 +69,13 @@ function makeModule({ storeKey, sujetPrefixe, prix, nom, evenement }) {
 
       const banner = isPaywall
         ? `<div class="rlic-info">Tu as utilise ta <b>recherche gratuite</b>. Pour rechercher autant de prospects que tu veux, debloque le module <b>${esc(nom)} a vie pour ${esc(prix)}</b> (paiement unique, aucun abonnement).</div>`
-        : `<p class="rlic-hint">Tu as achete le module <b>${esc(nom)}</b> ? Saisis ton e-mail d'achat et la cle qu'on t'a envoyee pour le debloquer a vie.</p>`;
+        : `<p class="rlic-hint">Debloque le module <b>${esc(nom)} a vie pour ${esc(prix)}</b> : paiement unique, aucun abonnement. La cle arrive par e-mail juste apres le paiement.</p>`;
 
       back.innerHTML = `<div class="rlic-sheet">
         <h3>&#128269; ${isPaywall ? "Debloque la Recherche a vie" : "Activer le module Recherche"}</h3>
         ${banner}
+        <div class="rlic-row"><a class="rlic-btn primary rlic-buy" href="${LIEN_ACHAT_MODULE}" target="_blank" rel="noopener">Acheter le module — ${esc(prix)}</a></div>
+        <p class="rlic-sep">Deja achete ? Saisis ton e-mail et ta cle ci-dessous.</p>
         <p class="rlic-hint">La cle est liee a ton e-mail : elle marche sur tous tes appareils, meme apres une reinstallation. (Le module est independant de l'appli : c'est un achat separe.)</p>
         <label class="rlic-field"><span class="lab">E-mail d'achat</span>
           <input type="email" id="mod-email" placeholder="Ton e-mail d'achat" autocomplete="email" autocapitalize="off" spellcheck="false"></label>
