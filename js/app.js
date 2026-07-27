@@ -2,14 +2,14 @@
  * app.js — Orchestration de l'interface Radar Google (PWA).
  * Navigation entre Reglages / Import / Tableau de bord, enrichissement avec progression.
  */
-import { parseCSV, lireProspects } from "./csv.js";
+import { parseCSV, lireProspects, colonnesTexteLibres } from "./csv.js";
 import { enrichir, trierParPriorite, fichesVersCSV, placesRecherche, rechercherProspects, raisonGoogle } from "./moteur.js";
 import { Licence } from "./licence.js";
 import { Vendeur } from "./vendeur.js";
 import { Trial, TrialRecherche } from "./trial.js";
 import { Recherche } from "./modules.js";
 import { Vus } from "./vus.js";
-import { texteProche } from "./proches.js";
+import { texteProche, confirmerColonneVille } from "./proches.js";
 import { Listes, dateLisible } from "./listes.js";
 
 const LS_GOOGLE = "radar_cle_google";
@@ -123,12 +123,68 @@ fileInput.addEventListener("change", () => {
   if (fileInput.files && fileInput.files[0]) chargerFichier(fileInput.files[0]);
 });
 
+// Champs proposes a la correction manuelle, dans l'ordre d'importance.
+const CHAMPS_COLONNES = [
+  ["societe", "Nom de l'entreprise"],
+  ["ville", "Ville"],
+  ["cp", "Code postal"],
+  ["tel", "Téléphone"],
+  ["email", "E-mail"],
+  ["prenom", "Prénom"],
+  ["nom", "Nom de famille"],
+  ["site", "Site web"],
+];
+
+// Tableau de correspondance modifiable : c'est le filet quand la detection
+// automatique se trompe, et la preuve visible de ce qu'elle a compris.
+function rendreColonnes(res) {
+  const bloc = $("bloc-colonnes");
+  const zone = $("colonnes");
+  if (!res || !res.entetes) { bloc.hidden = true; return; }
+  bloc.hidden = false;
+  const options = (sel) => ['<option value="">— aucune —</option>']
+    .concat(res.entetes.map((e, i) =>
+      `<option value="${i}"${sel === i ? " selected" : ""}>${echapper(e || ("Colonne " + (i + 1)))}</option>`))
+    .join("");
+  zone.innerHTML = CHAMPS_COLONNES.map(([champ, libelle]) => `
+    <label class="champ">
+      <span class="lab">${libelle}</span>
+      <select class="col-select" data-champ="${champ}">${options(res.mapping[champ])}</select>
+    </label>`).join("");
+}
+
+$("colonnes").addEventListener("change", (e) => {
+  const sel = e.target.closest(".col-select");
+  if (!sel || !prospectsCharges) return;
+  const mapping = {};
+  for (const s of $("colonnes").querySelectorAll(".col-select")) {
+    if (s.value !== "") mapping[s.getAttribute("data-champ")] = parseInt(s.value, 10);
+  }
+  const res = lireProspects(prospectsCharges.lignes, mapping);
+  res.nomFichier = prospectsCharges.nomFichier;
+  prospectsCharges = res;
+  $("nom-fichier").textContent = `${res.nomFichier} — ${res.prospects.length} prospects uniques détectés`;
+  $("btn-analyser").disabled = !res.prospects.length;
+  afficherLimite(res.prospects.length
+    ? `Correspondance mise à jour : ${res.prospects.length} prospect(s) exploitables.`
+    : "Avec ces colonnes, aucune ligne n'a de nom d'entreprise exploitable.",
+    res.prospects.length ? "info" : "warn");
+});
+
 function chargerFichier(file) {
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const lignes = parseCSV(String(reader.result));
-      const res = lireProspects(lignes);
+      let res = lireProspects(lignes);
+
+      // La ville n'est jamais devinee : si elle manque, on demande au geocodeur
+      // de confirmer qu'une colonne contient bien de vraies communes.
+      if (res.mapping.ville === undefined) {
+        const candidats = colonnesTexteLibres(res.mapping, lignes, res.avecEntete ? 1 : 0);
+        const col = await confirmerColonneVille(lignes, res.avecEntete ? 1 : 0, candidats);
+        if (col != null) res = lireProspects(lignes, { ...res.mapping, ville: col });
+      }
       if (res.exportRadar) {
         afficherLimite("Ce fichier est déjà un résultat Radar (colonnes « angle » et « accroche » présentes). "
           + "Le repasser dans l'analyse ne t'apprendra rien de plus et consommera ton quota Google pour rien. "
@@ -143,14 +199,16 @@ function chargerFichier(file) {
       }
       prospectsCharges = res;
       prospectsCharges.nomFichier = file.name;
+      rendreColonnes(res);
       $("nom-fichier").textContent = `${file.name} — ${res.prospects.length} prospects uniques détectés`;
-      const cols = Object.entries(res.mapping).map(([k, v]) => `${k}→${res.entetes[v]}`).join(", ");
-      let info = "Colonnes détectées : " + (cols || "aucune (vérifie le format du CSV)");
-      if (res.sansNom) info += ` — ${res.sansNom} ligne(s) écartée(s), sans nom d'entreprise.`;
+      let info = res.avecEntete
+        ? "Colonnes reconnues automatiquement."
+        : "Ce fichier n'a pas de ligne de titres : les colonnes ont été reconnues d'après leur contenu.";
+      if (res.sansNom) info += ` ${res.sansNom} ligne(s) écartée(s), sans nom d'entreprise.`;
       if (res.mapping.ville === undefined) {
-        info += " ⚠ Aucune colonne ville : la recherche sera bien moins précise.";
+        info += " ⚠ Aucune colonne ville trouvée : indique-la ci-dessous, la recherche sera bien plus précise.";
       }
-      if (!res.exportRadar) afficherLimite(info, cols && res.mapping.ville !== undefined ? "info" : "warn");
+      if (!res.exportRadar) afficherLimite(info, res.mapping.ville !== undefined ? "info" : "warn");
       $("btn-analyser").disabled = false;
     } catch (err) {
       afficherLimite("Fichier illisible : " + (err.message || err));

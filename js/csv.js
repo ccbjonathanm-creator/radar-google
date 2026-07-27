@@ -10,15 +10,18 @@
 const MOTS_CLES = {
   prenom:  ["first_name", "firstname", "prenom"],
   nom:     ["last_name", "lastname", "surname", "nom"],
-  societe: ["entite", "company", "societe", "entreprise", "raison", "enseigne"],
-  tel:     ["phone", "telephone", "mobile", "portable", "tel"],
-  ville:   ["city", "ville", "commune", "localite"],
+  societe: ["entite", "company", "societe", "entreprise", "raison", "enseigne",
+            "etablissement", "denomination", "structure", "organisation", "ese",
+            "business", "commerce", "magasin", "boutique", "cabinet", "agence"],
+  tel:     ["phone", "telephone", "mobile", "portable", "tel", "gsm", "fixe",
+            "numero", "num", "contact"],
+  ville:   ["city", "ville", "commune", "localite", "town", "municipalite", "bourg"],
   // Le code postal leve l'ambiguite des homonymes : il y a un Marmagne dans le
   // Cher et un autre en Saone-et-Loire, a 200 km l'un de l'autre.
-  cp:      ["code_postal", "codepostal", "zip", "postcode", "cp"],
-  email:   ["email", "courriel", "mail"],
-  site:    ["company_website", "website", "site_web", "site_internet"],
-  profil:  ["crm_url", "crm", "linkedin", "profil", "fiche"],
+  cp:      ["code_postal", "codepostal", "zip", "postcode", "cp", "postal"],
+  email:   ["email", "courriel", "mail", "e_mail"],
+  site:    ["company_website", "website", "site_web", "site_internet", "site", "web", "url"],
+  profil:  ["crm_url", "crm", "linkedin", "profil"],
 };
 
 const REMP_ACCENTS = {
@@ -133,6 +136,110 @@ export function detecterColonnes(entetes) {
   return mapping;
 }
 
+// ---------------------------------------------------------------------------
+// Detection par le CONTENU
+//
+// Les noms de colonnes varient d'un fichier a l'autre, et certains fichiers
+// n'ont carrement pas de ligne d'en-tete. On regarde donc ce qu'il y a DEDANS :
+// un numero de telephone, un e-mail ou un code postal se reconnaissent tout
+// seuls, quel que soit le titre de la colonne.
+// ---------------------------------------------------------------------------
+
+const RE_EMAIL = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
+const RE_CP = /^\d{5}$/;
+const RE_URL = /^(https?:\/\/|www\.)/i;
+
+function ressembleTel(v) {
+  const d = String(v).replace(/\D/g, "");
+  if (d.length < 9 || d.length > 15) return false;
+  if (RE_CP.test(String(v).trim())) return false;      // 5 chiffres = code postal
+  return /^(0|33|0033|\+33)/.test(String(v).replace(/[\s.\-()]/g, "")) || d.length === 9;
+}
+
+// Profil de chaque colonne sur un echantillon de lignes.
+function profilerColonnes(lignes, debut) {
+  const nbCol = Math.max(...lignes.map((l) => l.length));
+  const echantillon = lignes.slice(debut, debut + 60);
+  const cols = [];
+  for (let i = 0; i < nbCol; i++) {
+    const vals = echantillon.map((l) => (l[i] || "").trim()).filter(Boolean);
+    const n = vals.length || 1;
+    const part = (f) => vals.filter(f).length / n;
+    cols.push({
+      i,
+      remplies: vals.length,
+      email: part((v) => RE_EMAIL.test(v)),
+      tel: part(ressembleTel),
+      cp: part((v) => RE_CP.test(v)),
+      url: part((v) => RE_URL.test(v)),
+      texte: part((v) => /[A-Za-zÀ-ÿ]{3}/.test(v) && !/^\d/.test(v)),
+      distincts: new Set(vals.map((v) => v.toLowerCase())).size / n,
+      longueur: vals.reduce((s, v) => s + v.length, 0) / n,
+    });
+  }
+  return cols;
+}
+
+// Complete un mapping incomplet en s'appuyant sur le contenu des colonnes.
+export function completerParContenu(mapping, lignes, debut) {
+  const cols = profilerColonnes(lignes, debut);
+  const pris = new Set(Object.values(mapping));
+  const libre = (c) => !pris.has(c.i) && c.remplies > 0;
+  const poser = (champ, col) => {
+    if (mapping[champ] !== undefined || !col) return;
+    mapping[champ] = col.i;
+    pris.add(col.i);
+  };
+  const meilleur = (test, seuil) => {
+    const cand = cols.filter(libre).filter((c) => test(c) >= seuil)
+      .sort((a, b) => test(b) - test(a));
+    return cand[0];
+  };
+
+  // Du plus reconnaissable au moins reconnaissable.
+  poser("email", meilleur((c) => c.email, 0.5));
+  poser("tel", meilleur((c) => c.tel, 0.5));
+  poser("cp", meilleur((c) => c.cp, 0.7));
+  poser("site", meilleur((c) => c.url, 0.5));
+
+  // Le nom de l'entreprise : la colonne de texte dont les valeurs sont le plus
+  // souvent differentes d'une ligne a l'autre (une ville se repete, pas une
+  // raison sociale), et la plus longue a egalite.
+  if (mapping.societe === undefined && mapping.nom === undefined) {
+    const s = cols.filter(libre).filter((c) => c.texte >= 0.7)
+      .sort((a, b) => (b.distincts - a.distincts) || (b.longueur - a.longueur))[0];
+    poser("societe", s);
+  }
+
+  // ⚠ On NE DEVINE PAS la ville ici. Une colonne de texte quelconque ("BTP",
+  // "Secteur", "Zone") passerait pour une ville et partirait telle quelle dans
+  // la requete Google : une ville fausse est pire qu'une ville absente. Les
+  // colonnes candidates sont renvoyees, a charge de les faire confirmer par le
+  // geocodeur (voir colonnesTexteLibres / proches.js).
+  return mapping;
+}
+
+// Colonnes de texte encore libres : candidates possibles pour la ville, a
+// confirmer contre un vrai referentiel de communes avant d'etre retenues.
+export function colonnesTexteLibres(mapping, lignes, debut) {
+  const pris = new Set(Object.values(mapping));
+  return profilerColonnes(lignes, debut)
+    .filter((c) => !pris.has(c.i) && c.remplies > 0 && c.texte >= 0.7 && c.longueur < 40)
+    .map((c) => c.i);
+}
+
+// Une premiere ligne qui contient deja une donnee (telephone, e-mail, code
+// postal) n'est pas un en-tete : le fichier commence directement par les
+// donnees, et tout doit alors etre devine par le contenu.
+export function aUneLigneEntete(lignes) {
+  const p = lignes[0] || [];
+  const donnees = p.filter((v) => {
+    const s = (v || "").trim();
+    return s && (RE_EMAIL.test(s) || RE_CP.test(s) || ressembleTel(s) || RE_URL.test(s));
+  }).length;
+  return donnees === 0;
+}
+
 // Reconnait un fichier deja produit par Radar (export "CSV enrichi").
 export function estExportRadar(entetes) {
   const norm = entetes.map(normEntete);
@@ -140,10 +247,23 @@ export function estExportRadar(entetes) {
 }
 
 // Lit les lignes deja parsees -> liste de prospects uniques + mapping + entetes.
-export function lireProspects(lignes) {
+export function lireProspects(lignes, mappingForce) {
   if (!lignes || !lignes.length) throw new Error("CSV vide.");
-  const entetes = lignes[0];
-  const mapping = detecterColonnes(entetes);
+  const avecEntete = aUneLigneEntete(lignes);
+  const debut = avecEntete ? 1 : 0;
+  // Sans ligne d'en-tete, on fabrique des libelles pour que l'utilisateur
+  // puisse quand meme designer les colonnes a la main.
+  const entetes = avecEntete
+    ? lignes[0]
+    : (lignes[0] || []).map((v, i) => `Colonne ${i + 1}`);
+
+  let mapping;
+  if (mappingForce) {
+    mapping = { ...mappingForce };                 // choix explicite de l'utilisateur
+  } else {
+    mapping = avecEntete ? detecterColonnes(entetes) : {};
+    completerParContenu(mapping, lignes, debut);   // ce que le nom n'a pas donne
+  }
 
   const val = (ligne, champ) => {
     const i = mapping[champ];
@@ -154,7 +274,7 @@ export function lireProspects(lignes) {
   const prospects = [];
   const vus = new Set();
   let sansNom = 0;   // lignes ecartees faute de nom exploitable
-  for (let r = 1; r < lignes.length; r++) {
+  for (let r = debut; r < lignes.length; r++) {
     const ligne = lignes[r];
     if (!ligne.some((x) => x && x.trim())) continue;
     const prenom = val(ligne, "prenom");
@@ -191,5 +311,6 @@ export function lireProspects(lignes) {
       profil,
     });
   }
-  return { prospects, mapping, entetes, sansNom, exportRadar: estExportRadar(entetes) };
+  return { prospects, mapping, entetes, sansNom, avecEntete, lignes,
+           exportRadar: avecEntete && estExportRadar(entetes) };
 }

@@ -111,6 +111,35 @@ export async function geocoderCommune(nom, cp) {
   return res;
 }
 
+// ---------------------------------------------------------------------------
+// Trouver la colonne "ville" en la CONFIRMANT, au lieu de la deviner
+// ---------------------------------------------------------------------------
+
+// Pour chaque colonne candidate, on prend quelques valeurs au hasard et on
+// demande au geocodeur si ce sont de vraies communes francaises. Une colonne
+// "Secteur" remplie de "BTP" echoue, une colonne de communes reussit.
+// Renvoie l'indice de la meilleure colonne, ou null si aucune ne convient.
+export async function confirmerColonneVille(lignes, debut, candidats) {
+  if (!candidats || !candidats.length) return null;
+  let meilleure = null;
+  for (const col of candidats) {
+    const vals = [];
+    for (let r = debut; r < lignes.length && vals.length < 4; r++) {
+      const v = ((lignes[r] || [])[col] || "").trim();
+      if (v && !vals.includes(v)) vals.push(v);
+    }
+    if (vals.length < 2) continue;
+    let reconnues = 0;
+    for (const v of vals) {
+      const g = await geocoderCommune(v);
+      if (g) reconnues++;
+    }
+    const score = reconnues / vals.length;
+    if (score >= 0.6 && (!meilleure || score > meilleure.score)) meilleure = { col, score };
+  }
+  return meilleure ? meilleure.col : null;
+}
+
 // Phrase courte affichee sur la carte du prospect.
 // "de" + nom de ville, en francais correct : du Creusot, du Havre, du Mans,
 // des Sables-d'Olonne, de La Rochelle, d'Auxerre, de Chalon-sur-Saone.
