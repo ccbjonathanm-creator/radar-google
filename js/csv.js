@@ -247,7 +247,10 @@ export function estExportRadar(entetes) {
 }
 
 // Lit les lignes deja parsees -> liste de prospects uniques + mapping + entetes.
-export function lireProspects(lignes, mappingForce) {
+// mappingForce : correspondance imposee (correction manuelle), utilisee telle quelle.
+// graine : correspondance PARTIELLE posee avant la detection par le contenu,
+//          typiquement la colonne ville une fois confirmee par le geocodeur.
+export function lireProspects(lignes, mappingForce, graine) {
   if (!lignes || !lignes.length) throw new Error("CSV vide.");
   const avecEntete = aUneLigneEntete(lignes);
   const debut = avecEntete ? 1 : 0;
@@ -262,6 +265,9 @@ export function lireProspects(lignes, mappingForce) {
     mapping = { ...mappingForce };                 // choix explicite de l'utilisateur
   } else {
     mapping = avecEntete ? detecterColonnes(entetes) : {};
+    // La ville confirmee est posee AVANT : sa colonne est ainsi retiree du jeu,
+    // et le nom de l'entreprise sera cherche parmi les colonnes restantes.
+    if (graine) for (const [k, v] of Object.entries(graine)) if (v != null) mapping[k] = v;
     completerParContenu(mapping, lignes, debut);   // ce que le nom n'a pas donne
   }
 

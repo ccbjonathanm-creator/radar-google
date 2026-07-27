@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#05080f">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://places.googleapis.com https://api.groq.com https://api-adresse.data.gouv.fr https://resolv-trials.contactweb71.workers.dev https://cloud.umami.is; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://places.googleapis.com https://api.groq.com https://api-adresse.data.gouv.fr https://geo.api.gouv.fr https://resolv-trials.contactweb71.workers.dev https://cloud.umami.is; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; base-uri 'none'; form-action 'none'">
 <title>Radar Google — Intelligence commerciale locale</title>
 <meta name="description" content="Analyse la présence Google de vos prospects (fiche, note, avis, position, site) et prépare vos appels : angle de vente et accroche à lire, tableau de bord à recherche instantanée.">
 <link rel="manifest" href="manifest.webmanifest">
@@ -162,7 +162,9 @@
 
     <label class="champ">
       <span class="lab">Ville / zone <span style="color:var(--red)">*</span></span>
-      <input id="r-ville" type="text" autocomplete="off" placeholder="ex. Chalon-sur-Saône, Mâcon, Le Creusot...">
+      <input id="r-ville" type="text" autocomplete="off" placeholder="ex. Chalon-sur-Saône, ou un département : 71, Saône-et-Loire">
+      <span class="sous">Une ville, ou un <b>département entier</b> (son nom ou son numéro) :
+      Radar balaie alors ses communes, des plus peuplées aux plus petites.</span>
     </label>
 
     <div class="options">

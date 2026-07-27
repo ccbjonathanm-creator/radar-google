@@ -1,4 +1,4 @@
-const CACHE = "radar-v19";
+const CACHE = "radar-v20";
 const ASSETS = [
   './mesure.js',
   "./",
@@ -16,6 +16,8 @@ const ASSETS = [
   "./js/vus.js",
   "./js/proches.js",
   "./js/listes.js",
+  "./js/zones.js",
+  "./js/departements.js",
   "./js/villes.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

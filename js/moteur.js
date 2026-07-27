@@ -466,8 +466,12 @@ export async function rechercherProspects(filtres, cle, onProgress) {
   const metier = (filtres.metier || "").trim();
   const ville = (filtres.ville || "").trim();
   const national = !!filtres.national;
-  if (!metier && !ville && !national) throw new Error("Indique au moins un métier ou une ville.");
-  if (national && !metier) throw new Error("Pour balayer la France, indique au moins un métier.");
+  // Zones a balayer : la France entiere, les communes d'un departement fournies
+  // par l'appelant, ou rien du tout (une seule ville).
+  const base = national ? VILLES_FRANCE
+    : (Array.isArray(filtres.zones) && filtres.zones.length ? filtres.zones : null);
+  if (!metier && !ville && !base) throw new Error("Indique au moins un métier ou une ville.");
+  if (base && !metier) throw new Error("Pour balayer une zone entière, indique au moins un métier.");
   const cible = Math.min(Math.max(parseInt(filtres.max, 10) || 20, 1), 200);
 
   const ctx = {
@@ -484,10 +488,10 @@ export async function rechercherProspects(filtres, cle, onProgress) {
   // ou la recherche precedente s'est arretee (curseur), pour explorer du neuf.
   let zones = [ville];
   let depart = 0;
-  if (national) {
-    const n = VILLES_FRANCE.length;
+  if (base) {
+    const n = base.length;
     depart = ((parseInt(filtres.departVille, 10) || 0) % n + n) % n;
-    zones = VILLES_FRANCE.slice(depart).concat(VILLES_FRANCE.slice(0, depart));
+    zones = base.slice(depart).concat(base.slice(0, depart));
   }
 
   let zonesBalayees = 0;
@@ -499,6 +503,7 @@ export async function rechercherProspects(filtres, cle, onProgress) {
 
   const meta = {
     national,
+    balayage: !!base,
     zonesBalayees,
     zonesTotal: zones.length,
     appels: ctx.appels,
@@ -506,7 +511,7 @@ export async function rechercherProspects(filtres, cle, onProgress) {
     cible,
     plafondAtteint: ctx.appels >= PLAFOND_APPELS && ctx.fiches.length < cible,
     // ou reprendre au prochain coup : juste apres la derniere ville balayee
-    prochainDepart: national ? (depart + zonesBalayees) % VILLES_FRANCE.length : 0,
+    prochainDepart: base ? (depart + zonesBalayees) % base.length : 0,
   };
   return { fiches: trierResultats(ctx.fiches, filtres.tri), meta };
 }

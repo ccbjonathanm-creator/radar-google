@@ -67,14 +67,26 @@ export const Vus = {
     try { localStorage.removeItem(LS_CURSEUR); } catch (e) { /* rien a faire */ }
   },
 
-  // Curseur de balayage national : la prochaine recherche reprend la ou la
-  // precedente s'est arretee, au lieu de reprendre les memes villes.
-  curseur() {
-    const n = parseInt(localStorage.getItem(LS_CURSEUR) || "0", 10);
-    return Number.isFinite(n) && n >= 0 ? n : 0;
+  // Curseur de balayage : la prochaine recherche reprend la ou la precedente
+  // s'est arretee. Un curseur PAR ZONE ("france", "dep:71") : sinon un
+  // departement de 563 communes heriterait de la position du balayage national
+  // et demarrerait n'importe ou.
+  curseur(cle) {
+    try {
+      const m = JSON.parse(localStorage.getItem(LS_CURSEUR) || "{}");
+      const n = parseInt((m && m[cle || "france"]) || 0, 10);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    } catch (e) {
+      return 0;
+    }
   },
 
-  poserCurseur(n) {
-    try { localStorage.setItem(LS_CURSEUR, String(n)); } catch (e) { /* rien a faire */ }
+  poserCurseur(cle, n) {
+    try {
+      let m = {};
+      try { m = JSON.parse(localStorage.getItem(LS_CURSEUR) || "{}") || {}; } catch (e) { m = {}; }
+      m[cle || "france"] = n;
+      localStorage.setItem(LS_CURSEUR, JSON.stringify(m));
+    } catch (e) { /* rien a faire */ }
   },
 };

@@ -10,6 +10,7 @@ import { Trial, TrialRecherche } from "./trial.js";
 import { Recherche } from "./modules.js";
 import { Vus } from "./vus.js";
 import { texteProche, confirmerColonneVille } from "./proches.js";
+import { reconnaitreDepartement, communesDuDepartement } from "./zones.js";
 import { Listes, dateLisible } from "./listes.js";
 
 const LS_GOOGLE = "radar_cle_google";
@@ -181,9 +182,16 @@ function chargerFichier(file) {
       // La ville n'est jamais devinee : si elle manque, on demande au geocodeur
       // de confirmer qu'une colonne contient bien de vraies communes.
       if (res.mapping.ville === undefined) {
-        const candidats = colonnesTexteLibres(res.mapping, lignes, res.avecEntete ? 1 : 0);
-        const col = await confirmerColonneVille(lignes, res.avecEntete ? 1 : 0, candidats);
-        if (col != null) res = lireProspects(lignes, { ...res.mapping, ville: col });
+        const debut = res.avecEntete ? 1 : 0;
+        let candidats = colonnesTexteLibres(res.mapping, lignes, debut);
+        // Sans ligne de titres, la colonne prise pour le nom de l'entreprise
+        // n'est qu'une supposition statistique : elle doit concourir aussi,
+        // sinon une colonne de communes reste etiquetee "entreprise".
+        if (!res.avecEntete && res.mapping.societe !== undefined) {
+          candidats = candidats.concat([res.mapping.societe]);
+        }
+        const col = await confirmerColonneVille(lignes, debut, candidats);
+        if (col != null) res = lireProspects(lignes, null, { ville: col });
       }
       if (res.exportRadar) {
         afficherLimite("Ce fichier est déjà un résultat Radar (colonnes « angle » et « accroche » présentes). "
@@ -467,10 +475,31 @@ async function lancerRecherche() {
   const autorise = await autoriserRecherche();
   if (!autorise) return;
 
+  // Un departement tape dans le champ zone ("71", "Saône-et-Loire") ne peut pas
+  // se traiter par une requete unique : Google plafonnerait a ~60 resultats pour
+  // des centaines de communes. On balaie donc ses communes, les plus peuplees
+  // d'abord. La liste vient de l'API de l'Etat, gratuite et hors quota Google.
+  let zones = null, cleCurseur = "france", dep = null;
+  if (!national) {
+    dep = reconnaitreDepartement(ville);
+    if (dep) {
+      $("r-prog-txt").textContent = `Département ${dep.nom} reconnu, récupération de ses communes...`;
+      $("r-progress").classList.remove("hidden");
+      zones = await communesDuDepartement(dep.code);
+      if (!zones) {
+        $("r-progress").classList.add("hidden");
+        afficherLimiteR(`Impossible de récupérer les communes de ${dep.nom} (service de l'État injoignable). `
+          + "Réessaie, ou indique une ville précise.", "warn");
+        return;
+      }
+      cleCurseur = "dep:" + dep.code;
+    }
+  }
+
   const filtres = {
-    metier, ville, national,
+    metier, ville, national, zones,
     exclureIds: $("r-exclure-vus").checked ? Vus.ensemble() : new Set(),
-    departVille: Vus.curseur(),
+    departVille: Vus.curseur(cleCurseur),
     presenceWeb: $("r-presence").value,
     note: $("r-note").value,
     avis: $("r-avis").value,
@@ -516,7 +545,7 @@ async function lancerRecherche() {
 
   // Memoire : on retient ce qui vient de sortir, et ou le balayage s'est arrete.
   Vus.ajouter(resultats.map((f) => f.place_id).filter(Boolean));
-  if (meta.national) Vus.poserCurseur(meta.prochainDepart);
+  if (meta.balayage) Vus.poserCurseur(cleCurseur, meta.prochainDepart);
   majEtatVus();
 
   if (!resultats.length) {
@@ -533,7 +562,7 @@ async function lancerRecherche() {
 
   // Bilan honnete de ce qui a ete balaye, y compris ce qui a ete abandonne.
   const bilan = [];
-  if (meta.national) bilan.push(`${meta.zonesBalayees} ville(s) balayée(s) sur ${meta.zonesTotal}`);
+  if (meta.balayage) bilan.push(`${meta.zonesBalayees} commune(s) balayée(s) sur ${meta.zonesTotal}`);
   if (meta.ignores) bilan.push(`${meta.ignores} prospect(s) écarté(s) car déjà sortis`);
   if (meta.plafondAtteint) {
     bilan.push(`arrêt à la limite de ${meta.appels} appels Google pour préserver ton quota : `
@@ -548,6 +577,7 @@ async function lancerRecherche() {
   prospectsCharges = null;
   const titre = national
     ? `${metier || "recherche"} — toute la France`
+    : dep ? `${metier || "recherche"} — ${dep.nom} (${dep.code})`
     : [metier, ville].filter(Boolean).join(" — ");
   enregistrerListe(fiches, titre, "recherche");
   bilanConsole(fiches);
