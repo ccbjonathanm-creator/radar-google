@@ -9,6 +9,7 @@ import { Vendeur } from "./vendeur.js";
 import { Trial, TrialRecherche } from "./trial.js";
 import { Recherche } from "./modules.js";
 import { Vus } from "./vus.js";
+import { texteProche } from "./proches.js";
 
 const LS_GOOGLE = "radar_cle_google";
 const LS_GROQ = "radar_cle_groq";
@@ -219,7 +220,7 @@ async function lancerAnalyse() {
 
   fiches = trierParPriorite(out);
   enCours = false;
-  txt.textContent = "Termine.";
+  txt.textContent = "Terminé.";
   if (!Licence.isLicensed()) await Trial.consume(); // consomme la liste gratuite (serveur)
   majBadgeLicence();
   bilanConsole(fiches);
@@ -514,6 +515,10 @@ function carte(f, mots) {
   if (f.site) actions += `<a class="btn b2" href="${esc(f.site)}" target="_blank" rel="noopener">Son site</a>`;
   if (f.profil) actions += `<a class="btn b2" href="${esc(f.profil)}" target="_blank" rel="noopener">Sa fiche pro</a>`;
 
+  // Rattachement geographique : utile quand le prospect est dans un village
+  // dont personne ne situe le nom. Rien affiche s'il est deja dans la ville.
+  const proche = texteProche(f);
+
   let accroche = "";
   if (f.accroche) {
     accroche = `<div class="accroche"><div class="acc-lab">&#128172; À dire au décrochage
@@ -521,7 +526,7 @@ function carte(f, mots) {
       <div class="acc-txt">${esc(f.accroche)}</div></div>`;
   }
   return `<div class="fiche">
-    <div class="haut"><div><p class="titre">${nom}</p><div class="ville">${esc(f.ville || "")} ${f.type ? ("&middot; " + esc(f.type)) : ""}</div></div>${statut(f)}</div>
+    <div class="haut"><div><p class="titre">${nom}</p><div class="ville">${esc(f.ville || "")} ${f.type ? ("&middot; " + esc(f.type)) : ""}${proche ? (" &middot; " + esc(proche)) : ""}</div></div>${statut(f)}</div>
     <div class="lignes">${kpis}</div>
     <div class="angle">&#127919; ${esc(f.angle)}</div>
     ${accroche}

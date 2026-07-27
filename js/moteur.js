@@ -4,6 +4,28 @@
  */
 import { sansAccents, normaliserTel } from "./csv.js";
 import { VILLES_FRANCE } from "./villes.js";
+import { villeProche, geocoderCommune } from "./proches.js";
+
+// Rattache une fiche a la grande ville la plus proche. Position prise sur la
+// fiche Google si elle existe (aucun appel de plus), sinon sur le nom de la
+// commune via le geocodeur de l'Etat (gratuit, hors quota Google).
+export async function rattacherVille(fiche, lat, lon) {
+  let p = null;
+  if (typeof lat === "number" && typeof lon === "number") {
+    p = villeProche(lat, lon);
+  } else if (fiche.ville) {
+    const g = await geocoderCommune(fiche.ville, fiche.cp);
+    if (g) {
+      p = villeProche(g.lat, g.lon);
+      fiche.commune_pop = g.pop;
+    }
+  }
+  if (!p) return fiche;
+  fiche.ville_proche = p.ville;
+  fiche.proche_km = p.km;
+  fiche.proche_dedans = p.dedans;
+  return fiche;
+}
 
 // ---------------------------------------------------------------------------
 // Google Places (New)
@@ -12,7 +34,7 @@ import { VILLES_FRANCE } from "./villes.js";
 export async function placesRecherche(requete, cle) {
   const champs = "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber," +
     "places.websiteUri,places.rating,places.userRatingCount,places.primaryTypeDisplayName," +
-    "places.googleMapsUri";
+    "places.googleMapsUri,places.location";   // location : rattachement a une grande ville
   const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
     method: "POST",
     headers: {
@@ -37,7 +59,7 @@ export async function placesRecherche(requete, cle) {
 export async function placesRecherchePage(requete, cle, pageToken) {
   const champs = "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber," +
     "places.websiteUri,places.rating,places.userRatingCount,places.primaryTypeDisplayName," +
-    "places.googleMapsUri,places.businessStatus,nextPageToken";
+    "places.googleMapsUri,places.businessStatus,places.location,nextPageToken";
   const body = { textQuery: requete, languageCode: "fr", regionCode: "FR", pageSize: 20 };
   if (pageToken) body.pageToken = pageToken;
   const r = await fetch("https://places.googleapis.com/v1/places:searchText", {
@@ -269,6 +291,9 @@ export async function enrichir(prospect, cles, opts) {
     if (e.code) fiche.angle = `[erreur API ${e.code}] ${fiche.raisonErreur}`;
     else fiche.angle = `[erreur réseau : ${e.message}]`;
     fiche.erreur = true;
+    // Le rattachement geographique ne depend pas de Google : meme quota epuise,
+    // on sait encore dire de quelle grande ville depend la commune.
+    await rattacherVille(fiche, null, null);
     return fiche;
   }
 
@@ -306,6 +331,10 @@ export async function enrichir(prospect, cles, opts) {
     }
   }
 
+  // Grande ville de rattachement : position de la fiche si on l'a, sinon commune.
+  const loc = place && place.location;
+  await rattacherVille(fiche, loc ? loc.latitude : null, loc ? loc.longitude : null);
+
   fiche.angle = angleRegles(fiche);
   fiche.accroche = accrocheRegles(fiche);
   if (opts.ia && cles.groq) {
@@ -339,6 +368,11 @@ export function placeVersFiche(place, ville) {
     avis_negatifs: [], position: null, position_req: "", position_faite: false,
     angle: "", accroche: "",
   };
+  const loc = place.location;
+  if (loc) {
+    const p = villeProche(loc.latitude, loc.longitude);
+    if (p) { fiche.ville_proche = p.ville; fiche.proche_km = p.km; fiche.proche_dedans = p.dedans; }
+  }
   fiche.angle = angleRegles(fiche);
   fiche.accroche = accrocheRegles(fiche);
   return fiche;
@@ -487,13 +521,14 @@ export function trierParPriorite(fiches) {
 // Export CSV (memes colonnes que le script Python).
 export function fichesVersCSV(fiches) {
   const lignes = [[
-    "entite","ville","tel","email","fiche_google","confiance","note","avis","position",
-    "site_web","google_url","angle","accroche",
+    "entite","ville","ville_proche","distance_km","tel","email","fiche_google","confiance",
+    "note","avis","position","site_web","google_url","angle","accroche",
   ]];
   for (const x of fiches) {
     const pos = x.position ? x.position : (x.position_faite ? "hors top 20" : "");
     lignes.push([
-      x.entite, x.ville, x.tel, x.email,
+      x.entite, x.ville, x.ville_proche || "", x.proche_km == null ? "" : x.proche_km,
+      x.tel, x.email,
       x.trouve ? "oui" : "non", x.confiance, x.note, x.avis, pos,
       x.site, x.google_url, x.angle, x.accroche || "",
     ]);

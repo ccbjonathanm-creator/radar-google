@@ -13,6 +13,9 @@ const MOTS_CLES = {
   societe: ["entite", "company", "societe", "entreprise", "raison", "enseigne"],
   tel:     ["phone", "telephone", "mobile", "portable", "tel"],
   ville:   ["city", "ville", "commune", "localite"],
+  // Le code postal leve l'ambiguite des homonymes : il y a un Marmagne dans le
+  // Cher et un autre en Saone-et-Loire, a 200 km l'un de l'autre.
+  cp:      ["code_postal", "codepostal", "zip", "postcode", "cp"],
   email:   ["email", "courriel", "mail"],
   site:    ["company_website", "website", "site_web", "site_internet"],
   profil:  ["crm_url", "crm", "linkedin", "profil", "fiche"],
@@ -159,6 +162,7 @@ export function lireProspects(lignes) {
     const societe = val(ligne, "societe");
     const tel = val(ligne, "tel");
     const ville = val(ligne, "ville");
+    const cp = val(ligne, "cp");
     const email = val(ligne, "email");
     const profil = val(ligne, "profil");
 
@@ -177,6 +181,7 @@ export function lireProspects(lignes) {
 
     prospects.push({
       entite,
+      cp,
       personne: nomComplet,
       societe,
       tel,
