@@ -80,24 +80,24 @@ $("btn-tester").addEventListener("click", async () => {
   const msg = $("msg-test");
   if (!google) {
     msg.className = "msg-test ko";
-    msg.textContent = "La cle Google Places est obligatoire.";
+    msg.textContent = "La clé Google Places est obligatoire.";
     return;
   }
   $("btn-tester").disabled = true;
   msg.className = "msg-test";
-  msg.textContent = "Test de la cle Google en cours...";
+  msg.textContent = "Test de la clé Google en cours...";
   try {
     await placesRecherche("plombier Paris", google);
     localStorage.setItem(LS_GOOGLE, google);
     localStorage.setItem(LS_GROQ, groq);
     msg.className = "msg-test ok";
-    msg.textContent = "Cle valide, enregistree. ✅";
+    msg.textContent = "Clé valide, enregistrée. ✅";
     setTimeout(router, 700);
   } catch (e) {
     msg.className = "msg-test ko";
-    if (e.code === 403) msg.textContent = "Cle refusee (403). Verifie que \"Places API (New)\" est activee et que la cle n'a pas de restriction bloquante.";
-    else if (e.code === 400) msg.textContent = "Requete refusee (400). La cle semble incorrecte.";
-    else msg.textContent = "Echec du test : " + (e.message || e) + ". Cle non enregistree.";
+    if (e.code === 403) msg.textContent = "Clé refusée (403). Vérifie que \"Places API (New)\" est activée et que la clé n'a pas de restriction bloquante.";
+    else if (e.code === 400) msg.textContent = "Requête refusée (400). La clé semble incorrecte.";
+    else msg.textContent = "Échec du test : " + (e.message || e) + ". Clé non enregistrée.";
   } finally {
     $("btn-tester").disabled = false;
   }
@@ -182,7 +182,7 @@ async function lancerAnalyse() {
     ia: $("opt-ia").checked && !!cles.groq,
   };
   if ($("opt-ia").checked && !cles.groq) {
-    afficherLimite("Accroche IA demandee mais aucune cle Groq : l'accroche sera generee par regles (toujours utile). Ajoute une cle Groq dans Reglages pour l'IA.", "warn");
+    afficherLimite("Accroche IA demandée mais aucune clé Groq : l'accroche sera générée par règles (toujours utile). Ajoute une clé Groq dans Réglages pour l'IA.", "warn");
   }
 
   enCours = true;
@@ -236,7 +236,7 @@ function bilanConsole(fs) {
   const trouves = fs.filter((f) => f.trouve).length;
   const sansSite = fs.filter((f) => f.trouve && !f.site).length;
   const sansFiche = fs.filter((f) => !f.trouve).length;
-  console.log(`Bilan : ${trouves}/${fs.length} fiches trouvees, ${sansFiche} sans fiche, ${sansSite} sans site.`);
+  console.log(`Bilan : ${trouves}/${fs.length} fiches trouvées, ${sansFiche} sans fiche, ${sansSite} sans site.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +266,7 @@ $("btn-rechercher").addEventListener("click", () => {
     $("btn-rechercher").disabled = false;
     $("r-progress").classList.add("hidden");
     afficherLimiteR("Erreur inattendue : " + ((e && e.message) ? e.message : e) +
-      ". Ferme et rouvre l'appli pour recharger la derniere version.", "warn");
+      ". Ferme et rouvre l'appli pour recharger la dernière version.", "warn");
   });
 });
 
@@ -305,7 +305,7 @@ $("r-national").addEventListener("change", () => {
   $("r-ville").disabled = on;
   $("r-ville").placeholder = on
     ? "Balayage national : ce champ est ignoré"
-    : "ex. Chalon-sur-Saone, Macon, Le Creusot...";
+    : "ex. Chalon-sur-Saône, Mâcon, Le Creusot...";
 });
 
 function afficherLimiteR(texte, type) {
@@ -438,14 +438,14 @@ function majBadgeModule() {
   const b = $("mod-badge");
   if (!b) return;
   if (Recherche.isUnlocked()) {
-    b.innerHTML = `&#10003; <b>Module Recherche</b> — debloque a vie (${escTexte(Recherche.unlockedEmail() || "")}).`;
+    b.innerHTML = `&#10003; <b>Module Recherche</b> — débloqué à vie (${escTexte(Recherche.unlockedEmail() || "")}).`;
     return;
   }
   const left = TrialRecherche.usesLeft; // null = inconnu (hors-ligne)
   const dispo = left === 0
-    ? `Essai termine. Recherche illimitee avec le module a vie (${escTexte(Recherche.PRIX)}).`
+    ? `Essai terminé. Recherche illimitée avec le module à vie (${escTexte(Recherche.PRIX)}).`
     : `Version d'essai : <b>1 recherche gratuite</b>.`;
-  b.innerHTML = `${dispo} <span class="lien" id="lien-module">J'ai une cle, l'activer</span>`;
+  b.innerHTML = `${dispo} <span class="lien" id="lien-module">J'ai une clé, l'activer</span>`;
   const l = $("lien-module");
   if (l) l.addEventListener("click", () => Recherche.openActivate());
 }
@@ -473,8 +473,8 @@ function surligne(txt, mots) {
 }
 function statut(f) {
   if (!f.trouve) return '<span class="statut non">&#10060; AUCUNE fiche Google</span>';
-  if (f.confiance === "confirme") return '<span class="statut ok">&#9989; Fiche trouvee</span>';
-  return '<span class="statut conf">&#9888; A confirmer</span>';
+  if (f.confiance === "confirme") return '<span class="statut ok">&#9989; Fiche trouvée</span>';
+  return '<span class="statut conf">&#9888; À confirmer</span>';
 }
 function couleurNote(n) {
   if (n === "") return "";
@@ -501,11 +501,11 @@ function carte(f, mots) {
       kpis += `<div class="kpi" title="Position indicative pour &quot;${esc(f.position_req)}&quot;">Position Google <b style="${pc}">${pv}</b></div>`;
     }
   } else {
-    kpis += `<div class="kpi" style="color:var(--red)"><b>Pas de fiche Google detectee</b></div>`;
+    kpis += `<div class="kpi" style="color:var(--red)"><b>Pas de fiche Google détectée</b></div>`;
   }
   let neg = "";
   if (f.avis_negatifs && f.avis_negatifs.length) {
-    neg = '<div class="neg"><b style="font-size:13px;color:var(--red)">Avis negatifs :</b>' +
+    neg = '<div class="neg"><b style="font-size:13px;color:var(--red)">Avis négatifs :</b>' +
       f.avis_negatifs.map((a) => `<div class="a">${a.note}&#11088; ${esc(a.texte)}</div>`).join("") + "</div>";
   }
   let actions = "";
@@ -516,7 +516,7 @@ function carte(f, mots) {
 
   let accroche = "";
   if (f.accroche) {
-    accroche = `<div class="accroche"><div class="acc-lab">&#128172; A dire au decrochage
+    accroche = `<div class="accroche"><div class="acc-lab">&#128172; À dire au décrochage
         <button class="copier" data-txt="${esc(f.accroche)}">Copier</button></div>
       <div class="acc-txt">${esc(f.accroche)}</div></div>`;
   }
@@ -580,14 +580,14 @@ function majBadgeLicence() {
   const b = $("lic-badge");
   if (!b) return;
   if (Licence.isLicensed()) {
-    b.innerHTML = `&#10003; <b>Version complete</b> — debloquee a vie (${escTexte(Licence.licensedEmail() || "")}).`;
+    b.innerHTML = `&#10003; <b>Version complète</b> — débloquée à vie (${escTexte(Licence.licensedEmail() || "")}).`;
     return;
   }
   const left = Trial.usesLeft; // null = inconnu (hors-ligne) -> on n'affiche pas "termine"
   const dispo = left === 0
-    ? `Essai termine. Analyse illimitee avec la licence a vie (${escTexte(Licence.PRIX)}).`
+    ? `Essai terminé. Analyse illimitée avec la licence à vie (${escTexte(Licence.PRIX)}).`
     : `Version d'essai : <b>1 liste gratuite</b>.`;
-  b.innerHTML = `${dispo} <span class="lien" id="lien-licence">J'ai une cle, l'activer</span>`;
+  b.innerHTML = `${dispo} <span class="lien" id="lien-licence">J'ai une clé, l'activer</span>`;
   const l = $("lien-licence");
   if (l) l.addEventListener("click", () => Licence.openActivate());
 }
@@ -615,12 +615,12 @@ function showStartGate() {
     back.className = "rlic-back";
     back.innerHTML = `<div class="rlic-sheet">
       <h3>&#128225; Bienvenue sur Radar Google</h3>
-      <p class="rlic-hint">Entre ton e-mail pour activer ta <b>liste d'essai gratuite</b>. Il sert juste a garder le compte de ton essai (jamais partage, jamais de spam) et, plus tard, a retrouver ta licence.</p>
+      <p class="rlic-hint">Entre ton e-mail pour activer ta <b>liste d'essai gratuite</b>. Il sert juste à garder le compte de ton essai (jamais partagé, jamais de spam) et, plus tard, à retrouver ta licence.</p>
       <label class="rlic-field"><span class="lab">Ton e-mail</span>
         <input type="email" id="sg-email" placeholder="ton@email.fr" autocomplete="email" autocapitalize="off" spellcheck="false"></label>
       <div id="sg-status" class="rlic-status"></div>
       <div class="rlic-row">
-        <button class="rlic-btn ghost" id="sg-licence">J'ai deja une cle</button>
+        <button class="rlic-btn ghost" id="sg-licence">J'ai déjà une clé</button>
         <button class="rlic-btn primary" id="sg-ok">Continuer</button>
       </div>
       <div class="rlic-version" id="rlic-version">Radar Google v2</div>

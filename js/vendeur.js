@@ -70,34 +70,34 @@ function open() {
 function viewSetup(body, close) {
   body.innerHTML = `
     <h3>&#128273; Mode vendeur — installation</h3>
-    <p class="rlic-hint">Colle ta cle privee de signature (JWK, depuis secrets/radar-licence-vendeur.json). Elle sera chiffree et gardee sur ce seul appareil, jamais en clair, jamais dans le code.</p>
-    <label class="rlic-field"><span class="lab">Cle privee (JWK)</span>
+    <p class="rlic-hint">Colle ta clé privée de signature (JWK, depuis secrets/radar-licence-vendeur.json). Elle sera chiffrée et gardée sur ce seul appareil, jamais en clair, jamais dans le code.</p>
+    <label class="rlic-field"><span class="lab">Clé privée (JWK)</span>
       <textarea id="v-priv" rows="4" placeholder='{"kty":"EC","d":"...","x":"...","y":"...","crv":"P-256"}'></textarea></label>
     <label class="rlic-field"><span class="lab">Choisis une passphrase</span>
       <input type="password" id="v-pass" placeholder="mot de passe vendeur"></label>
     <div id="v-status" class="rlic-status"></div>
-    <div class="rlic-row"><button class="rlic-btn ghost" data-close>Annuler</button><button class="rlic-btn primary" id="v-save">Enregistrer (chiffre)</button></div>`;
+    <div class="rlic-row"><button class="rlic-btn ghost" data-close>Annuler</button><button class="rlic-btn primary" id="v-save">Enregistrer (chiffré)</button></div>`;
   body.querySelector("[data-close]").addEventListener("click", close);
   body.querySelector("#v-save").addEventListener("click", async () => {
     const priv = body.querySelector("#v-priv").value.trim();
     const pass = body.querySelector("#v-pass").value;
     const st = body.querySelector("#v-status");
-    if (!priv || !pass) { st.textContent = "Cle privee et passphrase requises."; return; }
-    try { await storePriv(priv, pass); privInMemory = priv; toast("Cle vendeur enregistree 🔒"); viewGenerate(body, close); }
-    catch (e) { st.textContent = "Cle privee invalide (JSON incorrect)."; }
+    if (!priv || !pass) { st.textContent = "Clé privée et passphrase requises."; return; }
+    try { await storePriv(priv, pass); privInMemory = priv; toast("Clé vendeur enregistrée 🔒"); viewGenerate(body, close); }
+    catch (e) { st.textContent = "Clé privée invalide (JSON incorrect)."; }
   });
 }
 
 function viewUnlock(body, close) {
   body.innerHTML = `
     <h3>&#128273; Mode vendeur</h3>
-    <p class="rlic-hint">Deverrouille ta cle de signature pour generer une licence.</p>
+    <p class="rlic-hint">Déverrouille ta clé de signature pour générer une licence.</p>
     <label class="rlic-field"><span class="lab">Passphrase vendeur</span>
       <input type="password" id="v-pass" placeholder="mot de passe vendeur"></label>
     <div id="v-status" class="rlic-status"></div>
-    <div class="rlic-row"><button class="rlic-btn ghost" id="v-forget">Oublier la cle</button><button class="rlic-btn primary" id="v-unlock">Deverrouiller</button></div>`;
+    <div class="rlic-row"><button class="rlic-btn ghost" id="v-forget">Oublier la clé</button><button class="rlic-btn primary" id="v-unlock">Déverrouiller</button></div>`;
   body.querySelector("#v-forget").addEventListener("click", () => {
-    if (confirm("Supprimer la cle vendeur de cet appareil ?")) { localStorage.removeItem(VKEY); privInMemory = null; close(); toast("Cle vendeur supprimee"); }
+    if (confirm("Supprimer la clé vendeur de cet appareil ?")) { localStorage.removeItem(VKEY); privInMemory = null; close(); toast("Clé vendeur supprimée"); }
   });
   body.querySelector("#v-unlock").addEventListener("click", async () => {
     const pass = body.querySelector("#v-pass").value; const st = body.querySelector("#v-status");
@@ -110,8 +110,8 @@ function viewUnlock(body, close) {
 
 function viewGenerate(body, close) {
   body.innerHTML = `
-    <h3>&#128273; Generer une licence</h3>
-    <p class="rlic-hint">Choisis le produit achete, puis entre l'e-mail que le client t'a communique. La cle sera liee a cet e-mail (valable sur tous ses appareils).</p>
+    <h3>&#128273; Générer une licence</h3>
+    <p class="rlic-hint">Choisis le produit acheté, puis entre l'e-mail que le client t'a communiqué. La clé sera liée à cet e-mail (valable sur tous ses appareils).</p>
     <label class="rlic-field"><span class="lab">Produit</span>
       <select id="v-produit">
         <option value="appli">Appli Radar Google (analyse de listes) — 10 €</option>
@@ -119,7 +119,7 @@ function viewGenerate(body, close) {
       </select></label>
     <label class="rlic-field"><span class="lab">E-mail du client</span>
       <input type="email" id="v-email" placeholder="ex. client@mail.com" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-    <div class="rlic-row"><button class="rlic-btn primary" id="v-gen">Generer la cle</button></div>
+    <div class="rlic-row"><button class="rlic-btn primary" id="v-gen">Générer la clé</button></div>
     <div id="v-out" class="rlic-out" style="display:none"></div>
     <div class="rlic-row"><button class="rlic-btn ghost" data-close>Fermer</button></div>`;
   body.querySelector("[data-close]").addEventListener("click", close);
@@ -133,10 +133,10 @@ function viewGenerate(body, close) {
     try {
       const licence = await signerEmail(privInMemory, email, scope);
       out.style.display = "block";
-      out.innerHTML = `<div class="rlic-hint" style="margin-bottom:6px"><b>${esc(nomProduit)}</b> — cle pour <b>${esc(email.toLowerCase())}</b> (copiee) — envoie e-mail + cle au client :</div>
+      out.innerHTML = `<div class="rlic-hint" style="margin-bottom:6px"><b>${esc(nomProduit)}</b> — clé pour <b>${esc(email.toLowerCase())}</b> (copiée) — envoie e-mail + clé au client :</div>
         <div class="rlic-key">${esc(licence)}</div>`;
       if (navigator.clipboard) navigator.clipboard.writeText(licence);
-      toast("Cle generee et copiee");
+      toast("Clé générée et copiée");
     } catch (e) { out.style.display = "block"; out.textContent = "Erreur : " + e.message; }
   });
 }

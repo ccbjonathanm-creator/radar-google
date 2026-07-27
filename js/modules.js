@@ -58,7 +58,7 @@ function makeModule({ storeKey, sujetPrefixe, prix, nom, evenement }) {
       if (verified) {
         back.innerHTML = `<div class="rlic-sheet">
           <h3>&#10003; Module ${esc(nom)} actif</h3>
-          <div class="rlic-ok">Le module <b>${esc(nom)}</b> est debloque a vie pour <b>${esc(state.email || "")}</b>. Merci !</div>
+          <div class="rlic-ok">Le module <b>${esc(nom)}</b> est débloqué à vie pour <b>${esc(state.email || "")}</b>. Merci !</div>
           <div class="rlic-row"><button class="rlic-btn primary" data-close>Fermer</button></div>
           <div class="rlic-version" id="rlic-version">Radar Google v2</div>
         </div>`;
@@ -68,23 +68,23 @@ function makeModule({ storeKey, sujetPrefixe, prix, nom, evenement }) {
       }
 
       const banner = isPaywall
-        ? `<div class="rlic-info">Tu as utilise ta <b>recherche gratuite</b>. Pour rechercher autant de prospects que tu veux, debloque le module <b>${esc(nom)} a vie pour ${esc(prix)}</b> (paiement unique, aucun abonnement).</div>`
-        : `<p class="rlic-hint">Debloque le module <b>${esc(nom)} a vie pour ${esc(prix)}</b> : paiement unique, aucun abonnement. La cle arrive par e-mail juste apres le paiement.</p>`;
+        ? `<div class="rlic-info">Tu as utilisé ta <b>recherche gratuite</b>. Pour rechercher autant de prospects que tu veux, débloque le module <b>${esc(nom)} à vie pour ${esc(prix)}</b> (paiement unique, aucun abonnement).</div>`
+        : `<p class="rlic-hint">Débloque le module <b>${esc(nom)} à vie pour ${esc(prix)}</b> : paiement unique, aucun abonnement. La clé arrive par e-mail juste après le paiement.</p>`;
 
       back.innerHTML = `<div class="rlic-sheet">
         <h3>&#128269; ${isPaywall ? "Debloque la Recherche a vie" : "Activer le module Recherche"}</h3>
         ${banner}
         <div class="rlic-row"><a class="rlic-btn primary rlic-buy" href="${LIEN_ACHAT_MODULE}" target="_blank" rel="noopener">Acheter le module — ${esc(prix)}</a></div>
-        <p class="rlic-sep">Deja achete ? Saisis ton e-mail et ta cle ci-dessous.</p>
-        <p class="rlic-hint">La cle est liee a ton e-mail : elle marche sur tous tes appareils, meme apres une reinstallation. (Le module est independant de l'appli : c'est un achat separe.)</p>
+        <p class="rlic-sep">Déjà acheté ? Saisis ton e-mail et ta clé ci-dessous.</p>
+        <p class="rlic-hint">La clé est liée à ton e-mail : elle marche sur tous tes appareils, même après une réinstallation. (Le module est indépendant de l'appli : c'est un achat séparé.)</p>
         <label class="rlic-field"><span class="lab">E-mail d'achat</span>
           <input type="email" id="mod-email" placeholder="Ton e-mail d'achat" autocomplete="email" autocapitalize="off" spellcheck="false"></label>
-        <label class="rlic-field"><span class="lab">Cle du module</span>
-          <input type="text" id="mod-key" placeholder="Colle ta cle ici" autocomplete="off"></label>
+        <label class="rlic-field"><span class="lab">Clé du module</span>
+          <input type="text" id="mod-key" placeholder="Colle ta clé ici" autocomplete="off"></label>
         <div id="mod-status" class="rlic-status"></div>
         <div class="rlic-row">
           <button class="rlic-btn ghost" data-close>${isPaywall ? "Plus tard" : "Fermer"}</button>
-          <button class="rlic-btn primary" id="mod-activate">Activer ma cle</button>
+          <button class="rlic-btn primary" id="mod-activate">Activer ma clé</button>
         </div>
         <div class="rlic-version" id="rlic-version">Radar Google v2</div>
       </div>`;
@@ -97,11 +97,11 @@ function makeModule({ storeKey, sujetPrefixe, prix, nom, evenement }) {
         const k = back.querySelector("#mod-key").value.trim();
         const st = back.querySelector("#mod-status");
         if (!email) { st.textContent = "Saisis ton e-mail d'achat."; return; }
-        if (!k) { st.textContent = "Colle ta cle du module."; return; }
+        if (!k) { st.textContent = "Colle ta clé du module."; return; }
         st.textContent = "Verification…";
         const ok = await activate(email, k);
-        if (ok) { close(); toast("✓ Module Recherche debloque, merci !"); }
-        else { st.textContent = "❌ E-mail ou cle incorrects."; }
+        if (ok) { close(); toast("✓ Module Recherche débloqué, merci !"); }
+        else { st.textContent = "❌ E-mail ou clé incorrects."; }
       });
     },
   };

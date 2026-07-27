@@ -81,8 +81,8 @@ export const Licence = {
 
     if (verified) {
       back.innerHTML = `<div class="rlic-sheet">
-        <h3>&#10003; Version complete active</h3>
-        <div class="rlic-ok">Radar Google est debloque a vie sur cet appareil pour <b>${esc(state.email || "")}</b>. Merci !</div>
+        <h3>&#10003; Version complète active</h3>
+        <div class="rlic-ok">Radar Google est débloqué à vie sur cet appareil pour <b>${esc(state.email || "")}</b>. Merci !</div>
         <div class="rlic-row"><button class="rlic-btn primary" data-close>Fermer</button></div>
         <div class="rlic-version" id="rlic-version">Radar Google v1</div>
       </div>`;
@@ -92,23 +92,23 @@ export const Licence = {
     }
 
     const banner = isPaywall
-      ? `<div class="rlic-info">Tu as utilise ta <b>liste gratuite</b>. Pour analyser autant de listes que tu veux, debloque Radar Google <b>a vie pour ${esc(PRIX)}</b> (paiement unique, aucun abonnement).</div>`
-      : `<p class="rlic-hint">Debloque Radar Google <b>a vie pour ${esc(PRIX)}</b> : paiement unique, aucun abonnement. La cle arrive par e-mail juste apres le paiement.</p>`;
+      ? `<div class="rlic-info">Tu as utilisé ta <b>liste gratuite</b>. Pour analyser autant de listes que tu veux, débloque Radar Google <b>à vie pour ${esc(PRIX)}</b> (paiement unique, aucun abonnement).</div>`
+      : `<p class="rlic-hint">Débloque Radar Google <b>à vie pour ${esc(PRIX)}</b> : paiement unique, aucun abonnement. La clé arrive par e-mail juste après le paiement.</p>`;
 
     back.innerHTML = `<div class="rlic-sheet">
       <h3>&#128274; ${isPaywall ? "Debloque Radar Google a vie" : "Activer ma licence"}</h3>
       ${banner}
       <div class="rlic-row"><a class="rlic-btn primary rlic-buy" href="${LIEN_ACHAT}" target="_blank" rel="noopener">Acheter — ${esc(PRIX)}</a></div>
-      <p class="rlic-sep">Deja achete ? Saisis ton e-mail et ta cle ci-dessous.</p>
-      <p class="rlic-hint">La cle est liee a ton e-mail : elle marche sur tous tes appareils, meme apres une reinstallation.</p>
+      <p class="rlic-sep">Déjà acheté ? Saisis ton e-mail et ta clé ci-dessous.</p>
+      <p class="rlic-hint">La clé est liée à ton e-mail : elle marche sur tous tes appareils, même après une réinstallation.</p>
       <label class="rlic-field"><span class="lab">E-mail d'achat</span>
         <input type="email" id="rlic-email" placeholder="Ton e-mail d'achat" autocomplete="email" autocapitalize="off" spellcheck="false"></label>
-      <label class="rlic-field"><span class="lab">Cle de licence</span>
-        <input type="text" id="rlic-key" placeholder="Colle ta cle ici" autocomplete="off"></label>
+      <label class="rlic-field"><span class="lab">Clé de licence</span>
+        <input type="text" id="rlic-key" placeholder="Colle ta clé ici" autocomplete="off"></label>
       <div id="rlic-status" class="rlic-status"></div>
       <div class="rlic-row">
         <button class="rlic-btn ghost" data-close>${isPaywall ? "Plus tard" : "Fermer"}</button>
-        <button class="rlic-btn primary" id="rlic-activate">Activer ma cle</button>
+        <button class="rlic-btn primary" id="rlic-activate">Activer ma clé</button>
       </div>
       <div class="rlic-version" id="rlic-version">Radar Google v1</div>
     </div>`;
@@ -121,11 +121,11 @@ export const Licence = {
       const k = back.querySelector("#rlic-key").value.trim();
       const st = back.querySelector("#rlic-status");
       if (!email) { st.textContent = "Saisis ton e-mail d'achat."; return; }
-      if (!k) { st.textContent = "Colle ta cle de licence."; return; }
+      if (!k) { st.textContent = "Colle ta clé de licence."; return; }
       st.textContent = "Verification…";
       const ok = await activate(email, k);
-      if (ok) { close(); toast("✓ Debloque a vie, merci !"); window.dispatchEvent(new Event("radar-licence-change")); }
-      else { st.textContent = "❌ E-mail ou cle incorrects."; }
+      if (ok) { close(); toast("✓ Débloque à vie, merci !"); window.dispatchEvent(new Event("radar-licence-change")); }
+      else { st.textContent = "❌ E-mail ou clé incorrects."; }
     });
   },
 };

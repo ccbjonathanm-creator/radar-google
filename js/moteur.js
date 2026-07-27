@@ -126,20 +126,20 @@ export function choisirMatch(prospect, resultats) {
 
 function textePosition(fiche) {
   const pos = fiche.position;
-  const req = fiche.position_req || "sa categorie";
+  const req = fiche.position_req || "sa catégorie";
   if (pos == null) {
     if (fiche.position_faite) return `Hors du top 20 pour "${req}" : quasi introuvable dans les recherches.`;
     return "";
   }
-  if (pos <= 3) return `Deja dans le top 3 pour "${req}" : le proteger et gagner en avis/photos.`;
-  if (pos <= 10) return `Position ${pos} pour "${req}" : proche du top 3, un vrai gain a aller chercher.`;
+  if (pos <= 3) return `Déjà dans le top 3 pour "${req}" : le protéger et gagner en avis/photos.`;
+  if (pos <= 10) return `Position ${pos} pour "${req}" : proche du top 3, un vrai gain à aller chercher.`;
   return `Position ${pos} pour "${req}" : loin des 3 premiers qui captent les appels.`;
 }
 
 export function angleRegles(fiche) {
   if (!fiche.trouve) {
     return "INVISIBLE sur Google Maps. Ses clients ne le trouvent pas quand ils cherchent. " +
-      "Argument : creer sa fiche = exister sur Google.";
+      "Argument : créer sa fiche = exister sur Google.";
   }
   const pts = [];
   const tp = textePosition(fiche);
@@ -150,10 +150,10 @@ export function angleRegles(fiche) {
   const note = fiche.note;
   const avis = fiche.avis;
   if (typeof note === "number" && note && note < 4.0) {
-    pts.push(`Note faible (${note}) : soigner l'e-reputation, repondre aux avis, faire remonter la note.`);
+    pts.push(`Note faible (${note}) : soigner l'e-réputation, répondre aux avis, faire remonter la note.`);
   }
   if (typeof avis === "number" && avis < 10) {
-    pts.push(`Peu d'avis (${avis}) : peu de preuve sociale, facile a booster avec une strategie d'avis.`);
+    pts.push(`Peu d'avis (${avis}) : peu de preuve sociale, facile à booster avec une stratégie d'avis.`);
   }
   if (!pts.length) {
     pts.push(`Bonne fiche (${note}*, ${avis} avis) : proposer d'optimiser (photos, posts, SEO local) pour passer devant les concurrents.`);
@@ -167,24 +167,24 @@ export function accrocheRegles(fiche) {
   const pos = fiche.position;
   const req = fiche.position_req;
   if (!fiche.trouve) {
-    return `Bonjour, ${appel} ? Je vous appelle parce qu'en cherchant votre activite sur Google Maps, ` +
-      "je ne vous trouve pas du tout. Vos clients non plus. On peut regler ca ensemble en quelques jours.";
+    return `Bonjour, ${appel} ? Je vous appelle parce qu'en cherchant votre activité sur Google Maps, ` +
+      "je ne vous trouve pas du tout. Vos clients non plus. On peut régler ça ensemble en quelques jours.";
   }
   if (pos && pos > 3 && req) {
     return `Bonjour, ${appel} ? Quand je tape "${req}" sur Google, vous sortez en position ${pos}. ` +
-      "Ce sont les 3 premiers qui recoivent les appels. J'appelle justement pour vous aider a remonter.";
+      "Ce sont les 3 premiers qui reçoivent les appels. J'appelle justement pour vous aider à remonter.";
   }
   if (!fiche.site) {
-    return `Bonjour, ${appel} ? Je vois votre fiche Google mais aucun site web derriere. ` +
-      "Les clients qui veulent verifier avant d'appeler vous zappent. C'est ce point que je viens vous proposer de corriger.";
+    return `Bonjour, ${appel} ? Je vois votre fiche Google mais aucun site web derrière. ` +
+      "Les clients qui veulent vérifier avant d'appeler vous zappent. C'est ce point que je viens vous proposer de corriger.";
   }
   const note = fiche.note;
   if (typeof note === "number" && note && note < 4.0) {
-    return `Bonjour, ${appel} ? Je regarde votre fiche Google, votre note est a ${note}. ` +
-      "Ca fait hesiter des clients avant meme de vous appeler. J'appelle pour vous aider a la faire remonter.";
+    return `Bonjour, ${appel} ? Je regarde votre fiche Google, votre note est à ${note}. ` +
+      "Ça fait hésiter des clients avant même de vous appeler. J'appelle pour vous aider à la faire remonter.";
   }
-  return `Bonjour, ${appel} ? Votre presence Google est deja correcte, et c'est justement pour ca que je vous appelle : ` +
-    "avec quelques reglages vous pouvez passer devant vos concurrents locaux.";
+  return `Bonjour, ${appel} ? Votre présence Google est déjà correcte, et c'est justement pour ça que je vous appelle : ` +
+    "avec quelques réglages vous pouvez passer devant vos concurrents locaux.";
 }
 
 // ---------------------------------------------------------------------------
@@ -198,21 +198,21 @@ export async function conseilIA(fiche, cle) {
     `Note: ${fiche.note}. Nombre d'avis: ${fiche.avis}. ` +
     `Site web: ${fiche.site ? "oui" : "NON"}.`;
   if (fiche.position) {
-    contexte += ` Position dans les resultats pour "${fiche.position_req}": ${fiche.position}e.`;
+    contexte += ` Position dans les résultats pour "${fiche.position_req}": ${fiche.position}e.`;
   } else if (fiche.position_faite && fiche.trouve) {
     contexte += ` Position pour "${fiche.position_req}": hors du top 20.`;
   }
   if (fiche.avis_negatifs && fiche.avis_negatifs.length) {
     const extraits = fiche.avis_negatifs.slice(0, 3).map((a) => a.texte.slice(0, 160)).join(" | ");
-    contexte += ` Avis negatifs recents: ${extraits}`;
+    contexte += ` Avis négatifs récents: ${extraits}`;
   }
-  const prompt = "Tu aides un commercial francais qui vend par telephone l'amelioration de la presence Google " +
-    "(fiche, position, avis, site) a des professionnels. Redige la phrase d'ouverture qu'il lira " +
-    "quand le prospect decroche : 2 phrases max, commence par 'Bonjour', naturelle, directe, " +
+  const prompt = "Tu aides un commercial français qui vend par téléphone l'amélioration de la présence Google " +
+    "(fiche, position, avis, site) à des professionnels. Rédige la phrase d'ouverture qu'il lira " +
+    "quand le prospect décroche : 2 phrases max, commence par 'Bonjour', naturelle, directe, " +
     "appuie-toi sur son point faible concret (position, avis, site manquant). " +
-    "N'utilise AUCUN champ a remplir ni crochet type [nom] ou [votre nom] : le commercial se " +
-    "presentera lui-meme, va droit au motif de l'appel apres 'Bonjour'. Tout en francais. " +
-    "Reponds UNIQUEMENT par un JSON valide de la forme {\"accroche\": \"...\"}. " + contexte;
+    "N'utilise AUCUN champ à remplir ni crochet type [nom] ou [votre nom] : le commercial se " +
+    "présentera lui-même, va droit au motif de l'appel après 'Bonjour'. Tout en français. " +
+    "Réponds UNIQUEMENT par un JSON valide de la forme {\"accroche\": \"...\"}. " + contexte;
   try {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
