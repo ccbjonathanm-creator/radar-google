@@ -10,6 +10,7 @@ import { Trial, TrialRecherche } from "./trial.js";
 import { Recherche } from "./modules.js";
 import { Vus } from "./vus.js";
 import { texteProche } from "./proches.js";
+import { Listes, dateLisible } from "./listes.js";
 
 const LS_GOOGLE = "radar_cle_google";
 const LS_GROQ = "radar_cle_groq";
@@ -141,6 +142,7 @@ function chargerFichier(file) {
         return;
       }
       prospectsCharges = res;
+      prospectsCharges.nomFichier = file.name;
       $("nom-fichier").textContent = `${file.name} — ${res.prospects.length} prospects uniques détectés`;
       const cols = Object.entries(res.mapping).map(([k, v]) => `${k}→${res.entetes[v]}`).join(", ");
       let info = "Colonnes détectées : " + (cols || "aucune (vérifie le format du CSV)");
@@ -156,6 +158,62 @@ function chargerFichier(file) {
   };
   reader.onerror = () => afficherLimite("Impossible de lire le fichier.");
   reader.readAsText(file, "utf-8");
+}
+
+// ---------------------------------------------------------------------------
+// Listes enregistrees : une analyse deja payee ne doit jamais etre refaite
+// ---------------------------------------------------------------------------
+function rendreListes() {
+  const bloc = $("bloc-listes");
+  const zone = $("listes");
+  const resumes = Listes.resumes();
+  bloc.hidden = !resumes.length;
+  if (!resumes.length) { zone.innerHTML = ""; return; }
+  const ko = Listes.poidsKo();
+  $("listes-poids").textContent = ko ? `${ko} Ko sur cet appareil` : "";
+  zone.innerHTML = resumes.map((l) => `
+    <div class="opt-row liste-ligne" data-id="${l.id}">
+      <span class="txt">
+        <span class="ot">${echapper(l.titre)}</span>
+        <span class="od">${l.nombre} prospect(s) &middot; ${dateLisible(l.date)}</span>
+      </span>
+      <button class="head-btn liste-ouvrir" data-id="${l.id}">Ouvrir</button>
+      <button class="head-btn liste-suppr" data-id="${l.id}" aria-label="Supprimer cette liste">✕</button>
+    </div>`).join("");
+}
+
+function echapper(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+$("listes").addEventListener("click", (e) => {
+  const ouvrir = e.target.closest(".liste-ouvrir");
+  const suppr = e.target.closest(".liste-suppr");
+  if (ouvrir) {
+    const f = Listes.charger(ouvrir.getAttribute("data-id"));
+    if (!f) { afficherLimite("Cette liste n'est plus lisible, elle a été supprimée.", "warn"); rendreListes(); return; }
+    fiches = f;                       // aucun appel reseau : tout vient de l'appareil
+    prospectsCharges = null;
+    $("bilan-recherche").hidden = true;
+    rendreDashboard();
+    montrer("dashboard");
+    return;
+  }
+  if (suppr) {
+    Listes.supprimer(suppr.getAttribute("data-id"));
+    rendreListes();
+  }
+});
+
+// Enregistre le resultat qui vient d'etre produit, et le dit si ca a echoue.
+function enregistrerListe(resultats, titre, origine) {
+  const r = Listes.enregistrer(resultats, titre, origine);
+  rendreListes();
+  if (!r.ok) {
+    afficherLimite("La liste n'a pas pu être enregistrée sur cet appareil (mémoire du navigateur pleine). "
+      + "Exporte le CSV avant de fermer la page, sinon le résultat sera perdu.", "warn");
+  }
 }
 
 function afficherLimite(texte, type) {
@@ -221,6 +279,7 @@ async function lancerAnalyse() {
   fiches = trierParPriorite(out);
   enCours = false;
   txt.textContent = "Terminé.";
+  enregistrerListe(fiches, prospectsCharges.nomFichier || "Fichier importé", "import");
   if (!Licence.isLicensed()) await Trial.consume(); // consomme la liste gratuite (serveur)
   majBadgeLicence();
   bilanConsole(fiches);
@@ -429,6 +488,10 @@ async function lancerRecherche() {
   // Les resultats sont deja des fiches enrichies -> directement dans le tableau de bord.
   fiches = resultats;
   prospectsCharges = null;
+  const titre = national
+    ? `${metier || "recherche"} — toute la France`
+    : [metier, ville].filter(Boolean).join(" — ");
+  enregistrerListe(fiches, titre, "recherche");
   bilanConsole(fiches);
   rendreDashboard();
   montrer("dashboard");
@@ -670,6 +733,10 @@ if ("serviceWorker" in navigator) {
   });
 }
 (async () => {
+  // Les listes deja produites ne dependent ni de la licence ni du reseau :
+  // on les affiche AVANT toute attente, sinon elles restent invisibles tant que
+  // l'ecran d'e-mail du demarrage n'est pas passe.
+  rendreListes();
   Trial.load();
   await Licence.init();
   await Recherche.init();

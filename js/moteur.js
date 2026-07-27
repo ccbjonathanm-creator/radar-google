@@ -350,14 +350,23 @@ export async function enrichir(prospect, cles, opts) {
 
 // Un lieu Google renvoye par la recherche EST deja une fiche enrichie : on le
 // convertit directement au meme format que enrichir(), pret pour le tableau de bord.
+// Commune reelle lue dans l'adresse Google : "12 rue X, 71100 Chalon-sur-Saône,
+// France" -> "Chalon-sur-Saône". Sans ca, une recherche "plombier Chalon"
+// etiquetait "Chalon" un artisan installe dans le village d'a cote.
+export function communeDepuisAdresse(adresse) {
+  const m = /\b\d{5}\s+([^,]+)/.exec(adresse || "");
+  return m ? m[1].trim() : "";
+}
+
 export function placeVersFiche(place, ville) {
   const nom = (place.displayName && place.displayName.text) || "";
   const tel = place.nationalPhoneNumber || "";
+  const commune = communeDepuisAdresse(place.formattedAddress);
   const fiche = {
     entite: nom, personne: "", societe: nom,
     place_id: place.id || "",     // sert a ne pas ressortir deux fois le meme pro
     tel, tel_norm: normaliserTel(tel),
-    ville: ville || "", email: "", profil: "",
+    ville: commune || ville || "", email: "", profil: "",
     trouve: true, confiance: "confirme",
     note: place.rating != null ? place.rating : "",
     avis: place.userRatingCount != null ? place.userRatingCount : 0,
