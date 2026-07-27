@@ -5,10 +5,12 @@
 
 // Pour chaque champ logique, mots-cles cherches dans l'en-tete (minuscules, sans accents).
 // L'ordre compte : le 1er mot-cle est prioritaire.
+// "entite" est en tete de societe : c'est le nom de colonne que Radar EXPORTE.
+// L'application doit savoir relire son propre fichier.
 const MOTS_CLES = {
   prenom:  ["first_name", "firstname", "prenom"],
   nom:     ["last_name", "lastname", "surname", "nom"],
-  societe: ["company", "societe", "entreprise", "raison", "enseigne"],
+  societe: ["entite", "company", "societe", "entreprise", "raison", "enseigne"],
   tel:     ["phone", "telephone", "mobile", "portable", "tel"],
   ville:   ["city", "ville", "commune", "localite"],
   email:   ["email", "courriel", "mail"],
@@ -79,25 +81,59 @@ export function parseCSV(texte) {
   return lignes;
 }
 
+// Normalise un en-tete : minuscules, sans accents, ponctuation -> espaces.
+// "Nom de famille" -> "nom de famille" ; "company_website" -> "company website".
+function normEntete(s) {
+  return sansAccents(s || "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+// Force d'une correspondance entre un en-tete et un mot-cle.
+// On refuse volontairement la correspondance "au milieu d'un mot" : c'est elle qui
+// faisait capturer la colonne "Prenom" par le mot-cle "nom" (-> "Frederic Frederic").
+function forceMatch(entete, motCle) {
+  const cle = normEntete(motCle);
+  if (!cle || !entete) return 0;
+  if (entete === cle) return 100;                       // en-tete identique au mot-cle
+  const motsCle = cle.split(" ");
+  const mots = entete.split(" ");
+  if (motsCle.length > 1) {
+    // mot-cle compose : il doit apparaitre tel quel dans l'en-tete
+    return (" " + entete + " ").includes(" " + cle + " ") ? 80 : 0;
+  }
+  return mots.includes(cle) ? 60 : 0;                   // mot entier uniquement
+}
+
 export function detecterColonnes(entetes) {
-  const norm = entetes.map((e) => sansAccents(e || ""));
-  const mapping = {};
+  const norm = entetes.map(normEntete);
+  // 1) tous les rapprochements possibles, avec leur force
+  const candidats = [];
   for (const [champ, cles] of Object.entries(MOTS_CLES)) {
-    let best = null; // [score, index]
     for (let i = 0; i < norm.length; i++) {
-      const e = norm[i];
       let meilleur = 0;
       cles.forEach((c, rang) => {
-        if (e.includes(c)) {
-          const score = cles.length - rang;
-          if (score > meilleur) meilleur = score;
-        }
+        const f = forceMatch(norm[i], c);
+        // bonus de rang : a force egale, le 1er mot-cle de la liste l'emporte
+        if (f) meilleur = Math.max(meilleur, f + (cles.length - rang));
       });
-      if (meilleur && (best === null || meilleur > best[0])) best = [meilleur, i];
+      if (meilleur) candidats.push({ champ, col: i, force: meilleur });
     }
-    if (best) mapping[champ] = best[1];
+  }
+  // 2) attribution du plus sur au moins sur, une colonne ne servant qu'une fois
+  candidats.sort((a, b) => b.force - a.force || a.col - b.col);
+  const mapping = {};
+  const colsPrises = new Set();
+  for (const c of candidats) {
+    if (mapping[c.champ] !== undefined || colsPrises.has(c.col)) continue;
+    mapping[c.champ] = c.col;
+    colsPrises.add(c.col);
   }
   return mapping;
+}
+
+// Reconnait un fichier deja produit par Radar (export "CSV enrichi").
+export function estExportRadar(entetes) {
+  const norm = entetes.map(normEntete);
+  return norm.includes("entite") && (norm.includes("accroche") || norm.includes("fiche google"));
 }
 
 // Lit les lignes deja parsees -> liste de prospects uniques + mapping + entetes.
@@ -114,6 +150,7 @@ export function lireProspects(lignes) {
 
   const prospects = [];
   const vus = new Set();
+  let sansNom = 0;   // lignes ecartees faute de nom exploitable
   for (let r = 1; r < lignes.length; r++) {
     const ligne = lignes[r];
     if (!ligne.some((x) => x && x.trim())) continue;
@@ -125,9 +162,14 @@ export function lireProspects(lignes) {
     const email = val(ligne, "email");
     const profil = val(ligne, "profil");
 
-    const nomComplet = [prenom, nom].filter(Boolean).join(" ").trim();
+    // Prenom et nom peuvent pointer la meme colonne sur un CSV ambigu : on ne
+    // repete pas deux fois le meme mot ("Frederic Frederic").
+    const morceaux = [prenom, nom].filter(Boolean);
+    const nomComplet = (morceaux[0] === morceaux[1] ? [morceaux[0]] : morceaux).join(" ").trim();
     const entite = societe || nomComplet;
-    if (!entite && !tel) continue;
+    // Sans nom, la requete envoyee a Google se reduirait a la ville : elle ne
+    // designe personne, et le diagnostic qui en sortirait serait faux.
+    if (!entite) { sansNom++; continue; }
 
     const cle = normaliserTel(tel) || entite.toLowerCase();
     if (vus.has(cle)) continue;
@@ -144,5 +186,5 @@ export function lireProspects(lignes) {
       profil,
     });
   }
-  return { prospects, mapping, entetes };
+  return { prospects, mapping, entetes, sansNom, exportRadar: estExportRadar(entetes) };
 }

@@ -3,11 +3,12 @@
  * Navigation entre Reglages / Import / Tableau de bord, enrichissement avec progression.
  */
 import { parseCSV, lireProspects } from "./csv.js";
-import { enrichir, trierParPriorite, fichesVersCSV, placesRecherche, rechercherProspects } from "./moteur.js";
+import { enrichir, trierParPriorite, fichesVersCSV, placesRecherche, rechercherProspects, raisonGoogle } from "./moteur.js";
 import { Licence } from "./licence.js";
 import { Vendeur } from "./vendeur.js";
 import { Trial, TrialRecherche } from "./trial.js";
 import { Recherche } from "./modules.js";
+import { Vus } from "./vus.js";
 
 const LS_GOOGLE = "radar_cle_google";
 const LS_GROQ = "radar_cle_groq";
@@ -126,14 +127,27 @@ function chargerFichier(file) {
     try {
       const lignes = parseCSV(String(reader.result));
       const res = lireProspects(lignes);
+      if (res.exportRadar) {
+        afficherLimite("Ce fichier est déjà un résultat Radar (colonnes « angle » et « accroche » présentes). "
+          + "Le repasser dans l'analyse ne t'apprendra rien de plus et consommera ton quota Google pour rien. "
+          + "Tu peux quand même lancer l'analyse si tu veux rafraîchir les notes et les avis.", "warn");
+      }
       if (!res.prospects.length) {
-        afficherLimite("Aucun prospect exploitable trouve dans ce fichier. Verifie qu'il contient bien une colonne nom/societe et telephone.");
+        const pourquoi = res.sansNom
+          ? `Les ${res.sansNom} lignes lues n'ont aucun nom d'entreprise exploitable. Radar cherche des établissements : il lui faut une colonne société, entreprise, enseigne ou entité.`
+          : "Aucun prospect exploitable trouvé dans ce fichier. Vérifie qu'il contient bien une colonne nom ou société.";
+        afficherLimite(pourquoi);
         return;
       }
       prospectsCharges = res;
-      $("nom-fichier").textContent = `${file.name} — ${res.prospects.length} prospects uniques detectes`;
+      $("nom-fichier").textContent = `${file.name} — ${res.prospects.length} prospects uniques détectés`;
       const cols = Object.entries(res.mapping).map(([k, v]) => `${k}→${res.entetes[v]}`).join(", ");
-      afficherLimite("Colonnes detectees : " + (cols || "aucune (verifie le format du CSV)"), cols ? "info" : "warn");
+      let info = "Colonnes détectées : " + (cols || "aucune (vérifie le format du CSV)");
+      if (res.sansNom) info += ` — ${res.sansNom} ligne(s) écartée(s), sans nom d'entreprise.`;
+      if (res.mapping.ville === undefined) {
+        info += " ⚠ Aucune colonne ville : la recherche sera bien moins précise.";
+      }
+      if (!res.exportRadar) afficherLimite(info, cols && res.mapping.ville !== undefined ? "info" : "warn");
       $("btn-analyser").disabled = false;
     } catch (err) {
       afficherLimite("Fichier illisible : " + (err.message || err));
@@ -173,20 +187,35 @@ async function lancerAnalyse() {
 
   enCours = true;
   $("btn-analyser").disabled = true;
+  $("bilan-recherche").hidden = true;   // bilan propre au module Recherche
   $("zone-progress").classList.remove("hidden");
   const barre = $("prog-barre");
   const txt = $("prog-txt");
   const total = prospectsCharges.prospects.length;
   const out = [];
 
+  // Quota Google : inutile de bruler toute la liste en erreur. Au 3e refus
+  // d'affilee on s'arrete et on montre la raison exacte donnee par Google.
+  let quotaSuite = 0;
+  let arret = "";
   for (let i = 0; i < total; i++) {
     const p = prospectsCharges.prospects[i];
     txt.textContent = `Interrogation de Google... ${i + 1}/${total} — ${p.entite}`;
     const f = await enrichir(p, cles, opts);
     out.push(f);
     barre.style.width = Math.round(((i + 1) / total) * 100) + "%";
+    if (f.codeErreur === 429 || f.codeErreur === 403) {
+      quotaSuite++;
+      if (quotaSuite >= 3) {
+        arret = `Analyse arrêtée à la ligne ${i + 1} sur ${total}. Google refuse les appels : ${f.raisonErreur}`;
+        break;
+      }
+    } else if (!f.erreur) {
+      quotaSuite = 0;
+    }
     await pause(120); // menage l'API, comme le script Python
   }
+  if (arret) afficherLimite(arret, "warn");
 
   fiches = trierParPriorite(out);
   enCours = false;
@@ -248,8 +277,36 @@ function ouvrirRecherche() {
     return;
   }
   majBadgeModule();
+  majEtatVus();
   montrer("recherche");
 }
+
+// Compteur de la memoire des prospects deja sortis.
+function majEtatVus() {
+  const el = $("r-vus-etat");
+  if (!el) return;
+  const n = Vus.nombre();
+  el.textContent = n
+    ? `${n} prospect(s) déjà sortis lors de tes recherches précédentes : ils seront écartés.`
+    : "Aucun prospect en mémoire pour l'instant.";
+}
+
+$("btn-vider-vus").addEventListener("click", () => {
+  const n = Vus.nombre();
+  if (!n) { afficherLimiteR("La mémoire est déjà vide.", "info"); return; }
+  Vus.vider();
+  majEtatVus();
+  afficherLimiteR(`Mémoire vidée : ${n} prospect(s) oubliés. Ils pourront ressortir.`, "info");
+});
+
+// La ville n'a plus de sens quand on balaie la France entiere.
+$("r-national").addEventListener("change", () => {
+  const on = $("r-national").checked;
+  $("r-ville").disabled = on;
+  $("r-ville").placeholder = on
+    ? "Balayage national : ce champ est ignoré"
+    : "ex. Chalon-sur-Saone, Macon, Le Creusot...";
+});
 
 function afficherLimiteR(texte, type) {
   const z = $("r-limite");
@@ -280,14 +337,22 @@ async function lancerRecherche() {
   if (!cles.google) { montrer("reglages"); return; }
   const metier = $("r-metier").value.trim();
   const ville = $("r-ville").value.trim();
-  if (!metier && !ville) { afficherLimiteR("Indique au moins un metier et une ville.", "warn"); return; }
+  const national = $("r-national").checked;
+  if (national && !metier) {
+    afficherLimiteR("Pour balayer toute la France, indique au moins un métier.", "warn"); return;
+  }
+  if (!national && !metier && !ville) {
+    afficherLimiteR("Indique au moins un métier et une ville.", "warn"); return;
+  }
   $("r-limite").classList.add("hidden");
 
   const autorise = await autoriserRecherche();
   if (!autorise) return;
 
   const filtres = {
-    metier, ville,
+    metier, ville, national,
+    exclureIds: $("r-exclure-vus").checked ? Vus.ensemble() : new Set(),
+    departVille: Vus.curseur(),
     presenceWeb: $("r-presence").value,
     note: $("r-note").value,
     avis: $("r-avis").value,
@@ -304,22 +369,24 @@ async function lancerRecherche() {
   txt.textContent = "Interrogation de Google Maps...";
   barre.style.width = "15%";
 
-  let resultats;
+  let resultats, meta;
   try {
-    resultats = await rechercherProspects(filtres, cles.google, (n) => {
-      txt.textContent = `${n} prospect(s) trouve(s)...`;
-      barre.style.width = Math.min(90, 15 + n * 3) + "%";
+    const r = await rechercherProspects(filtres, cles.google, (n, zone) => {
+      txt.textContent = zone && national
+        ? `${n} prospect(s) trouvé(s)... (${zone})`
+        : `${n} prospect(s) trouvé(s)...`;
+      const cible = parseInt(filtres.max, 10) || 20;
+      barre.style.width = Math.min(90, 15 + Math.round(75 * n / cible)) + "%";
     });
+    resultats = r.fiches;
+    meta = r.meta;
   } catch (e) {
     rechercheEnCours = false;
     $("btn-rechercher").disabled = false;
     $("r-progress").classList.add("hidden");
     barre.style.width = "0%";
-    const msg = e.code
-      ? (e.code === 403 ? "Cle Google refusee (403). Verifie \"Places API (New)\" dans Reglages."
-        : "Erreur API Google " + e.code + ".")
-      : (e.message || String(e));
-    afficherLimiteR("Echec de la recherche : " + msg, "warn");
+    const msg = e.code ? `Google a répondu ${e.code} : ${raisonGoogle(e)}` : (e.message || String(e));
+    afficherLimiteR("Échec de la recherche. " + msg, "warn");
     return;
   }
 
@@ -329,13 +396,34 @@ async function lancerRecherche() {
   $("r-progress").classList.add("hidden");
   barre.style.width = "0%";
 
+  // Memoire : on retient ce qui vient de sortir, et ou le balayage s'est arrete.
+  Vus.ajouter(resultats.map((f) => f.place_id).filter(Boolean));
+  if (meta.national) Vus.poserCurseur(meta.prochainDepart);
+  majEtatVus();
+
   if (!resultats.length) {
-    afficherLimiteR("Aucun prospect trouve pour ces criteres. Elargis la zone ou retire des filtres.", "warn");
+    const pourquoi = meta.ignores
+      ? `Aucun NOUVEAU prospect : les ${meta.ignores} trouvés étaient déjà sortis lors de tes recherches précédentes. `
+        + "Décoche « ne pas ressortir les prospects déjà vus », ou vide la mémoire."
+      : "Aucun prospect trouvé pour ces critères. Élargis la zone ou retire des filtres.";
+    afficherLimiteR(pourquoi, "warn");
     return;
   }
   // La recherche a produit des resultats : on consomme l'essai (si pas de licence module).
   if (!Recherche.isUnlocked()) await TrialRecherche.consume();
   majBadgeModule();
+
+  // Bilan honnete de ce qui a ete balaye, y compris ce qui a ete abandonne.
+  const bilan = [];
+  if (meta.national) bilan.push(`${meta.zonesBalayees} ville(s) balayée(s) sur ${meta.zonesTotal}`);
+  if (meta.ignores) bilan.push(`${meta.ignores} prospect(s) écarté(s) car déjà sortis`);
+  if (meta.plafondAtteint) {
+    bilan.push(`arrêt à la limite de ${meta.appels} appels Google pour préserver ton quota : `
+      + `${resultats.length} trouvés sur les ${meta.cible} demandés. Relance pour continuer le balayage`);
+  }
+  const zoneBilan = $("bilan-recherche");
+  zoneBilan.textContent = bilan.length ? bilan.join(" — ") + "." : "";
+  zoneBilan.hidden = !bilan.length;
 
   // Les resultats sont deja des fiches enrichies -> directement dans le tableau de bord.
   fiches = resultats;

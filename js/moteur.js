@@ -3,6 +3,7 @@
  * Portage fidele du script Python enrichir.py, cote navigateur (fetch, BYOK).
  */
 import { sansAccents, normaliserTel } from "./csv.js";
+import { VILLES_FRANCE } from "./villes.js";
 
 // ---------------------------------------------------------------------------
 // Google Places (New)
@@ -52,6 +53,21 @@ export async function placesRecherchePage(requete, cle, pageToken) {
   }
   const data = await r.json();
   return { places: data.places || [], nextPageToken: data.nextPageToken || "" };
+}
+
+// Google renvoie toujours la raison exacte du refus dans le corps de la reponse.
+// La cacher derriere un code nu ("erreur API 429") ne laisse aucune prise a
+// l'utilisateur : on la remonte telle quelle.
+export function raisonGoogle(e) {
+  try {
+    const j = JSON.parse(e.corps || "");
+    const m = j && j.error && j.error.message;
+    if (m) return String(m);
+  } catch (x) { /* corps non JSON : on retombe sur le message generique */ }
+  if (e.code === 429) return "Quota Google dépassé. Trop d'appels sur la période, ou crédit gratuit du mois épuisé.";
+  if (e.code === 403) return "Clé refusée. Vérifie que « Places API (New) » est activée et que la facturation est liée au projet.";
+  if (e.code === 400) return "Requête refusée par Google (clé ou paramètre incorrect).";
+  return "Google n'a pas donné de raison.";
 }
 
 export async function placesAvis(placeId, cle) {
@@ -235,12 +251,23 @@ export async function enrichir(prospect, cles, opts) {
     avis_negatifs: [], angle: "", accroche: "",
     position: null, position_req: "", position_faite: false,
   };
+  // Sans nom d'entreprise, la requete se reduirait a la ville : Google repondrait
+  // sur la ville elle-meme et on conclurait a tort "invisible sur Google Maps".
+  if (!entite) {
+    fiche.erreur = true;
+    fiche.codeErreur = 0;
+    fiche.raisonErreur = "Ligne sans nom d'entreprise : rien à chercher.";
+    fiche.angle = "[ligne ignorée] Aucun nom d'entreprise dans le fichier, impossible d'interroger Google.";
+    return fiche;
+  }
   let resultats;
   try {
     resultats = await placesRecherche(requete, cles.google);
   } catch (e) {
-    if (e.code) fiche.angle = `[erreur API ${e.code}]`;
-    else fiche.angle = `[erreur reseau : ${e.message}]`;
+    fiche.codeErreur = e.code || 0;
+    fiche.raisonErreur = raisonGoogle(e);
+    if (e.code) fiche.angle = `[erreur API ${e.code}] ${fiche.raisonErreur}`;
+    else fiche.angle = `[erreur réseau : ${e.message}]`;
     fiche.erreur = true;
     return fiche;
   }
@@ -299,6 +326,7 @@ export function placeVersFiche(place, ville) {
   const tel = place.nationalPhoneNumber || "";
   const fiche = {
     entite: nom, personne: "", societe: nom,
+    place_id: place.id || "",     // sert a ne pas ressortir deux fois le meme pro
     tel, tel_norm: normaliserTel(tel),
     ville: ville || "", email: "", profil: "",
     trouve: true, confiance: "confirme",
@@ -355,35 +383,89 @@ function trierResultats(fiches, tri) {
   return trierParPriorite(fiches);
 }
 
-// Recherche de prospects par filtres.
-// filtres = { metier, ville, presenceWeb, note, avis, avecTel, exclureFermes, tri, max }.
-// onProgress(nbTrouves) est appele apres chaque page. Renvoie un tableau de fiches.
-export async function rechercherProspects(filtres, cle, onProgress) {
-  const metier = (filtres.metier || "").trim();
-  const ville = (filtres.ville || "").trim();
-  const requete = `${metier} ${ville}`.trim();
-  if (!requete) throw new Error("Indique au moins un metier ou une ville.");
-  const cible = Math.min(Math.max(parseInt(filtres.max, 10) || 20, 1), 60);
-  const passe = construirePredicat(filtres);
+// Plafond dur d'appels Google pour une recherche. Sans lui, un metier rare
+// combine a un filtre severe balaierait les 190 villes pour rien et viderait le
+// quota. Ce qui a ete abandonne est remonte dans le bilan, jamais tu en silence.
+const PLAFOND_APPELS = 80;
 
-  const fiches = [];
-  const vus = new Set();
+// Balaye UNE zone (jusqu'a 3 pages Google, soit ~60 lieux) et empile ce qui passe
+// les filtres. Renvoie le nombre d'appels consommes.
+async function balayerZone(ctx, ville) {
+  const requete = `${ctx.metier} ${ville}`.trim();
   let token = "";
-  for (let page = 0; page < 3; page++) {           // Google : 3 pages max (~60 lieux)
-    const { places, nextPageToken } = await placesRecherchePage(requete, cle, token);
+  let appels = 0;
+  for (let page = 0; page < 3; page++) {
+    if (ctx.appels + appels >= PLAFOND_APPELS) break;
+    const { places, nextPageToken } = await placesRecherchePage(requete, ctx.cle, token);
+    appels++;
     for (const p of places) {
-      if (!p.id || vus.has(p.id)) continue;
-      vus.add(p.id);
-      if (!passe(p)) continue;
-      fiches.push(placeVersFiche(p, ville));
-      if (fiches.length >= cible) break;
+      if (!p.id || ctx.dejaVus.has(p.id)) continue;
+      ctx.dejaVus.add(p.id);              // evite aussi les doublons entre villes voisines
+      if (ctx.exclus.has(p.id)) { ctx.ignores++; continue; }
+      if (!ctx.passe(p)) continue;
+      ctx.fiches.push(placeVersFiche(p, ville));
+      if (ctx.fiches.length >= ctx.cible) break;
     }
-    if (onProgress) onProgress(fiches.length);
-    if (fiches.length >= cible || !nextPageToken) break;
+    if (ctx.onProgress) ctx.onProgress(ctx.fiches.length, ville);
+    if (ctx.fiches.length >= ctx.cible || !nextPageToken) break;
     token = nextPageToken;
     await new Promise((r) => setTimeout(r, 350)); // le jeton de page a besoin d'un court delai
   }
-  return trierResultats(fiches, filtres.tri);
+  return appels;
+}
+
+// Recherche de prospects par filtres.
+// filtres = { metier, ville, national, exclureIds, presenceWeb, note, avis,
+//             avecTel, exclureFermes, tri, max }.
+// onProgress(nbTrouves, villeEnCours) est appele apres chaque page.
+// Renvoie { fiches, meta } — meta sert a dire honnetement ce qui a ete balaye.
+export async function rechercherProspects(filtres, cle, onProgress) {
+  const metier = (filtres.metier || "").trim();
+  const ville = (filtres.ville || "").trim();
+  const national = !!filtres.national;
+  if (!metier && !ville && !national) throw new Error("Indique au moins un métier ou une ville.");
+  if (national && !metier) throw new Error("Pour balayer la France, indique au moins un métier.");
+  const cible = Math.min(Math.max(parseInt(filtres.max, 10) || 20, 1), 200);
+
+  const ctx = {
+    metier, cle, cible, onProgress,
+    passe: construirePredicat(filtres),
+    exclus: filtres.exclureIds instanceof Set ? filtres.exclureIds : new Set(),
+    dejaVus: new Set(),
+    fiches: [],
+    ignores: 0,        // deja sortis lors d'une recherche precedente
+    appels: 0,
+  };
+
+  // Zones a balayer : une seule ville, ou la France entiere en repartant de la
+  // ou la recherche precedente s'est arretee (curseur), pour explorer du neuf.
+  let zones = [ville];
+  let depart = 0;
+  if (national) {
+    const n = VILLES_FRANCE.length;
+    depart = ((parseInt(filtres.departVille, 10) || 0) % n + n) % n;
+    zones = VILLES_FRANCE.slice(depart).concat(VILLES_FRANCE.slice(0, depart));
+  }
+
+  let zonesBalayees = 0;
+  for (const z of zones) {
+    if (ctx.fiches.length >= ctx.cible || ctx.appels >= PLAFOND_APPELS) break;
+    ctx.appels += await balayerZone(ctx, z);
+    zonesBalayees++;
+  }
+
+  const meta = {
+    national,
+    zonesBalayees,
+    zonesTotal: zones.length,
+    appels: ctx.appels,
+    ignores: ctx.ignores,
+    cible,
+    plafondAtteint: ctx.appels >= PLAFOND_APPELS && ctx.fiches.length < cible,
+    // ou reprendre au prochain coup : juste apres la derniere ville balayee
+    prochainDepart: national ? (depart + zonesBalayees) % VILLES_FRANCE.length : 0,
+  };
+  return { fiches: trierResultats(ctx.fiches, filtres.tri), meta };
 }
 
 // Tri : les plus "vendables" en haut.

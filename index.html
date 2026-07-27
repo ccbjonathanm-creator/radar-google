@@ -148,6 +148,16 @@
       <input id="r-ville" type="text" autocomplete="off" placeholder="ex. Chalon-sur-Saone, Macon, Le Creusot...">
     </label>
 
+    <div class="options">
+      <label class="opt-row"><input type="checkbox" id="r-national">
+        <span class="txt"><span class="ot">Balayer toute la France</span>
+        <span class="od">Ignore la ville ci-dessus. Radar interroge les grandes agglomérations
+        puis les préfectures de chaque département, jusqu'à atteindre le nombre demandé.</span></span></label>
+      <label class="opt-row"><input type="checkbox" id="r-exclure-vus" checked>
+        <span class="txt"><span class="ot">Ne pas ressortir les prospects déjà vus</span>
+        <span class="od" id="r-vus-etat">Aucun prospect en mémoire pour l'instant.</span></span></label>
+    </div>
+
     <label class="champ">
       <span class="lab">Presence web</span>
       <select id="r-presence">
@@ -205,9 +215,15 @@
       <select id="r-max">
         <option value="20">20 prospects</option>
         <option value="40">40 prospects</option>
-        <option value="60">60 prospects (max)</option>
+        <option value="60">60 prospects</option>
+        <option value="100">100 prospects (toute la France)</option>
+        <option value="200">200 prospects (toute la France)</option>
       </select>
     </label>
+
+    <p class="aide">
+      <button type="button" id="btn-vider-vus" class="btn-secondaire">Vider la mémoire des prospects déjà vus</button>
+    </p>
 
     <div id="r-limite" class="avert hidden"></div>
 
@@ -231,6 +247,7 @@
   </div>
   <input id="q" placeholder="Tape le nom du prospect qui decroche..." autocomplete="off">
   <div class="compte" id="compte"></div>
+  <div class="compte" id="bilan-recherche" hidden></div>
   <div class="barre-actions">
     <button class="btn-obj" id="btn-toggle-obj">&#128481;&#65039; Reponses aux objections</button>
     <button class="btn-obj" id="btn-export">&#11015;&#65039; Exporter le CSV enrichi</button>

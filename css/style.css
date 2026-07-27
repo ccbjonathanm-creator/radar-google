@@ -1,3 +1,5 @@
+/* Un attribut hidden ne doit jamais etre ecrase par un display de classe. */
+[hidden]{display:none !important}
 :root{
   --bg:#05080f;
   --surface:rgba(15,21,32,.78);
